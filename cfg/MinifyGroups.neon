@@ -1,0 +1,6 @@
+# grupos de arquivos para o minify (/min)
+# /min?g=nomedogrupo
+
+core:
+  - //public/js/core/jquery.js
+  - //public/js/core/bootstrap.js

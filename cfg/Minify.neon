@@ -1,0 +1,39 @@
+# configurações para o Minify (https://code.google.com/p/minify/ )
+# todas as configurações daqui devem ser compativeis com as configurações de sua documentacao,
+# que pode ser encontrada em https://code.google.com/p/minify/wiki/UserGuide
+
+debug: no
+errorLogger: no           # deixar no (false) aumenta um pouco a performance no minify 
+                           # deixar yes para usar o FirePHP
+
+cachePath: $TEMP_PATH\min  # se usar barras unix (/), elas não serão convertidas, 
+                            # se usar win (\), elas serão convertidas para DS
+cacheFileLocking: yes      # no (false) para sistemas NFS (muito lento se yes)
+uploaderHoursBehind: 0     # diferença de horas entre servidor ftp e computador local
+
+# grupos de arquivos para o minify (/min)
+# /min?g=nomedogrupo
+groups:
+  core:
+    - //public/js/core/jquery.js
+    - //public/js/core/bootstrap.js
+
+# opções do output
+serveOptions:
+  maxAge: 6 months
+
+  minApp:
+    groupsOnly: no
+    allowDirs: []
+    #noMinPattern: '@[-\\.]min\\.(?:js|css)$@i'    # não minifica arquivos que terminam com -min ou .min
+  
+  # para definição de outros minifiers, por ex, o Google Closure Compiler
+  minifiers:
+    'text/css': [CSSmin, run]
+
+  # opções dos minifiers
+  minifierOptions:
+    #'text/css':
+      #prependRelativePath: public/css/
+      #symlinks
+

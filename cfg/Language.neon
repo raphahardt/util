@@ -1,0 +1,15 @@
+# lingua padrão do sistema
+
+default: pt-br
+
+# redirecionamento para linguagens similares. serve para normalizar as pastas
+similar:
+  pt:    pt-br
+  pt-pt: pt-br
+  en:    en-us
+  en-gb: en-us
+
+# linguagens que o site aceita
+languages:
+  - pt-br
+  - en-us

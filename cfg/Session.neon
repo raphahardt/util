@@ -1,0 +1,4 @@
+# configurações de uso da session
+
+class: SessionDbc
+table: core_session

@@ -1,0 +1,6 @@
+# configurações globais de upload de arquivos
+
+max-file-size: 5000000  # 5mb
+min-file-size: 100
+#accept-file-types: '\.(gif|png|jpe?g)$'
+

@@ -1,0 +1,42 @@
+# mapeamento de URLs com seus respectivos Controllers/paginas, e localização dos controllers
+
+routes:
+
+  # se a rota tiver nome, colocar como key, senão, colocar apenas traço (-)
+  # key: nome da rota
+  # value: propriedades da rota:
+  #   - url: caminho de URL que direciona a rota
+  #   - target: nome do controller ou array que linka com outra rota chamando outro metodo
+  #             ex: target: [home: abc] direciona a rota para HomeController->abc()
+  - 
+    url: '/upload'
+    target: [home: process_upload]
+
+  teste:
+    url: '/teste.[json:format]?'
+    target: [home: teste]
+    
+  # exemplos de rotas
+  # 
+  # rota1:
+  #   url: '/url/da/rota'
+  #   target: RotaController
+  #
+  # rota2:                          # opcional
+  #   url: '/url/com/[pattern:parametro]'   # encontra /url/com/textosohcomletras
+  #   target: [rota1: metodo2]      # chama RotaController->metodo2()
+
+  # patterns: (ver https://github.com/dannyvankooten/AltoRouter)
+  #
+  # * - encontra tudo, mas para em barras (lazy)
+  # ** - encontra tudo, inclusive barras
+  # a - caracteres de a-z e 0-9
+  # i - numeros inteiros 0-9
+  # h - hexadecimal
+  # ? - deixa parametro opcional
+
+controllers:
+  
+  # key: nome do controller
+  # value: caminho do controller, inicando com barra (/)
+  

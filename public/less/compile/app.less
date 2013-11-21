@@ -1,0 +1,297 @@
+/*
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+*/
+/* 
+    Created on : 24/10/2013, 13:57:11
+    Author     : usuario
+*/
+
+@import '../vendor/bootstrap/bootstrap.less';
+@import '../vendor/fontawesome/font-awesome.less';
+
+// file upload styles
+@import '../vendor/bootstrap-fileupload/styles.less'; 
+
+// theme
+@import '../themes/theme1.less';
+
+//@font-family-sans-serif: 'Raleway', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+//@font-family-sans-serif: 'Comfortaa', 'Raleway', 'Open Sans', 'Ubuntu', Arial, sans-serif;
+@font-family-sans-serif: 'Comfortaa', 'Ubuntu', Arial, sans-serif;
+@font-size-base: 15px;
+@line-height-base: 1.51234;
+
+@fa-font-path: 'fonts/';
+
+@brand-primary: #ee311d;
+
+.re-header {
+  @height: 60px;
+  
+  background: @brand-primary;
+  color: #fff;
+  height: @height;
+  border-bottom: 1px solid darken(@brand-primary, 10%);
+  
+  // < tablet
+  @media (max-width: @screen-xs-max) {
+    height: auto;
+  }
+  
+  .re-header-row {
+    .make-row();
+    
+    .re-header-brand {
+      .make-sm-column(6);
+      
+      .logo { 
+        float:left; line-height: 1; 
+        // < tablet
+        @media (max-width: @screen-xs-max) {
+          float: none;
+        }
+      }
+      .logo h1 {
+        margin:0; padding:0;
+
+        a {
+          background: url('../../static/200/layout/reacao/re-logo-top.png') no-repeat 0 50%;
+          display: block;
+          width: 200px;
+          height: 60px;
+          text-indent: -9999px;
+          overflow:hidden;
+          margin-right:20px;
+          
+          // < tablet
+          @media (max-width: @screen-xs-max) {
+            //background: url('../../static/150/layout/reacao/re-logo-top.png') no-repeat 50% 50%;
+            background-position: 50% 50%;
+            width: 100%;
+            //height: 50px;
+            margin-right: 0;
+          }
+
+        }
+      }
+      .logo h2 {
+        display:none;
+      }
+      
+      .re-menu {
+        height: @height;
+        
+        ul, li {margin:0;padding:0;}
+        li { float: left; list-style: none }
+        a {
+          line-height: @height;
+          height: @height;
+          display:block;
+          padding: 0 15px;
+          color: #f3f3f3;
+          font-size: 18px;
+          
+          &:hover, &:focus {
+            background-color: darken(@brand-primary, 7%);
+            text-decoration: none
+          }
+        }
+        
+        // < tablet
+        @media (max-width: @screen-xs-max) {
+          display:none;
+        }
+      } 
+    }
+    
+    .re-header-gsearch {
+      .make-sm-column(6);
+      
+      form {
+        margin-top: 11px;
+      }
+      
+    }
+  }
+  
+  .form-control {
+    background: lighten(@brand-primary, 45%);
+    border-color: darken(@brand-primary, 10%) !important;
+  }
+  .btn {
+    border-color: darken(@brand-primary, 10%) !important;
+  }
+  
+}
+
+body {
+  background: #001;
+}
+
+/*  */
+.tt-dataset-series {
+  .tt-suggestions {
+    /*column-count: 2;
+    column-gap: 10px;
+    -webkit-column-count: 2;
+    -webkit-column-gap: 10px;*/
+    
+    .tt-suggestion {
+      /*-webkit-column-break-inside: avoid;
+      break-inside: avoid;*/
+      
+    }
+  }
+}
+
+.re-gs-serie {
+  @img-width-cell: 70px;
+  
+  .make-row();
+  
+  .re-gs-serie-img {
+    // >= tablet
+    @media (min-width: @screen-sm) {
+      .make-xs-column(2);
+    }
+    // < tablet
+    @media (max-width: @screen-xs-max) {
+      padding-left: 12px;
+      width: @img-width-cell;
+      float:left;
+    }
+    text-align: center;
+    padding-right: 8px !important;
+    
+    img {
+      // >= tablet
+      @media (min-width: @screen-sm) {
+        .img-responsive();
+      }
+      // < tablet
+      @media (max-width: @screen-xs-max) {
+        width: @img-width-cell;
+      }
+    }
+  }
+  
+  .re-gs-serie-content {
+    // >= tablet
+    @media (min-width: @screen-sm) {
+      .make-xs-column(10);
+    }// < tablet
+    @media (max-width: @screen-xs-max) {
+      padding-right: 8px;
+      margin-left: @img-width-cell + 16px;
+    }
+    padding-left: 4px !important;
+    
+    font-size: 13px;
+    // < tablet
+    @media (max-width: @screen-xs-max) {
+      font-size: 10px;
+    }
+    // < desktop
+    @media (max-width: @screen-sm-max) {
+      font-size: 11px;
+    }
+    
+    .btn {
+      .pull-right;
+      // < tablet
+      @media (max-width: @screen-xs-max) {
+        display:none;
+      }
+    }
+    .title { 
+      font-size: 120%;
+      margin: 0;
+      margin-bottom: 8px;
+    }
+    
+  }
+  
+}
+
+ul.files {
+  list-style: none;
+  margin:0;
+  padding:0;
+
+  li .file-container {
+    /*float:left;*/
+    /*width: 180px;
+    height: 250px;*/
+    border:1px solid #41495b;
+    margin: 3px -10px;
+    border-radius: 4px;
+    position: relative;
+  }
+  li.even .file-container {
+    border-right-style: dashed;
+    /*margin-right: -14px;*/
+  }
+  li.odd .file-container {
+    /*background: #212631;*/
+    border-left-style: dashed;
+    /*margin-left: -14px;*/
+  }
+  li .file-preview {
+    margin: 20px 5px;
+  }
+  li .file-preview img,
+  li .file-preview canvas{
+    display:block;
+    margin: 0 auto;
+    border-radius: 4px;
+    box-shadow: 1px 1px 3px #111621;
+  }
+  li .file-info {
+    background: #212631;
+    margin: 3px;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  li .file-name, 
+  li .file-size, 
+  li .file-progress {
+    height: 18px;
+    line-height: 18px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    float:left;
+  }
+  li .file-name,
+  li .file-size {
+    width: 24.91%;
+  }
+  li .file-progress {
+    width: 50%;
+  }
+  li .file-actions {
+    padding-top: 3px;
+    clear: left;
+    text-align: right;
+  }
+  li .file-number {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 40px;
+    height: 32px;
+    background: #212631;
+    color: #ffffff;
+    text-align: center;
+    line-height: 32px;
+    font-size: 16px;
+    border-radius: 4px;
+  }
+  li.odd .file-number {
+    right: 0;
+    left: auto;
+  }
+}

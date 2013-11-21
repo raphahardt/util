@@ -1,0 +1,6 @@
+# importação de classes adicionais.
+# é o mesmo que chamar Core::import( key, value )
+
+# exemplo
+# 
+# ClasseAdicional: root/caminho/para/classe
