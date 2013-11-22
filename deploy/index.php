@@ -16,16 +16,28 @@ function createDir($dirName, $perm = 0777) {
     }
 }
 
-function createDirFTP($ftp, $dirName) {
+/*function createDirFTP($ftp, $dirName) {
     $dirs = explode('/', $dirName);
     $dir='';
     foreach ($dirs as $part) {
         $dir.=$part.'/';
         if (!is_dir($dir) && strlen($dir)>0) {
-            ftp_mkdir($ftp, $dir, $perm);
+            @ftp_mkdir($ftp, $dir);
 			//ftp_chmod($ftp, $perm, $dir);
         }
     }
+}*/
+function createDirFTP($ftpcon,$ftpath){
+   $parts = explode('/',$ftpath); // 2013/06/11/username
+   foreach($parts as $part){
+      if(!@ftp_chdir($ftpcon, $part)){
+         ftp_mkdir($ftpcon, $part);
+         ftp_chdir($ftpcon, $part);
+         //ftp_chmod($ftpcon, 0777, $part);
+      }
+   }
+   // volta para a pasta que estava
+   ftp_chdir($ftpcon, str_repeat('../', count($parts)));
 }
 
 /* deletes dir recursevely, be careful! */
@@ -99,6 +111,22 @@ if (is_dir($basedir)) {
 	body {
 		margin:40px;
 	}
+	#ftp {
+		overflow:hidden;
+		-webkit-transition:height ease .5s;
+		-moz-transition:height ease .5s;
+		transition:height ease .5s;
+		height: 240px;
+	}
+	@media (max-width: 767px) {
+		#ftp {
+			height: 400px;
+		}
+	}
+	#ftp.closed {
+		height:0;
+	}
+	
 </style>
 </head>
 
@@ -145,36 +173,6 @@ if (is_dir($basedir)) {
 			</div>
 		</div>
 		
-		<div class="row">
-			<div class="col-sm-offset-2 col-sm-10">
-				<h3>FTP</h3>
-			</div>
-		</div>
-		
-		<div class="form-group">
-			<div class="col-sm-2 control-label"><label>Host</label></div>
-			<div class="col-sm-5 control">
-				<input type="text" name="ftp_host" value="<?=htmlspecialchars($ftp_host) ?>" placeholder="ftp://ftp.example.com" class="form-control">
-			</div>
-			<div class="col-sm-1 control-label"><label>Port</label></div>
-			<div class="col-sm-2 control">
-				<input type="text" name="ftp_port" value="<?=htmlspecialchars($ftp_port) ?>" placeholder="21" class="form-control">
-			</div>
-		</div>
-		
-		<div class="form-group">
-			<div class="col-sm-2 control-label"><label>Username</label></div>
-			<div class="col-sm-4 control">
-				<input type="text" name="ftp_user" value="<?=htmlspecialchars($ftp_user) ?>" placeholder="username" class="form-control">
-			</div>
-		</div>
-		<div class="form-group">
-			<div class="col-sm-2 control-label"><label>Password</label></div>
-			<div class="col-sm-4 control">
-				<input type="password" name="ftp_pwd" value="<?=htmlspecialchars($ftp_pwd) ?>" placeholder="****" class="form-control">
-			</div>
-		</div>
-		
 		<div class="form-group">
 			<div class="col-sm-2 control-label"><label>Destination Local folder</label></div>
 			<div class="col-sm-10 control">
@@ -185,18 +183,63 @@ if (is_dir($basedir)) {
 			</div>
 		</div>
 		
-		<div class="form-group">
-			<div class="col-sm-2 control-label"><label>Destination Remote folder</label></div>
-			<div class="col-sm-10 control">
-				<input type="text" name="ftp_folder" value="<?=htmlspecialchars($ftp_folder) ?>" placeholder="/public_html/" class="form-control">
+		<div class="row">
+			<div class="col-sm-offset-2 col-sm-10">
+				<h3>FTP</h3>
 			</div>
 		</div>
 		
-		<div class="row">
+		<div class="form-group">
 			<div class="col-sm-offset-2 col-sm-10">
-				<input type="submit" class="btn btn-lg btn-primary" value="Exportar">
+				<p class="form-control-static">
+					<label class="checkbox">
+						<input type="checkbox" name="send_ftp" value=1 checked onclick="document.getElementById('ftp').className=this.checked ? '' : 'closed';" /> Upload for ftp
+					</label>
+				</p>
 			</div>
 		</div>
+		
+		<div id="ftp">
+			<div class="form-group">
+				<div class="col-sm-2 control-label"><label>Host</label></div>
+				<div class="col-sm-5 control">
+					<input type="text" name="ftp_host" value="<?=htmlspecialchars($ftp_host) ?>" placeholder="ftp://ftp.example.com" class="form-control">
+				</div>
+				<div class="col-sm-1 control-label"><label>Port</label></div>
+				<div class="col-sm-2 control">
+					<input type="text" name="ftp_port" value="<?=htmlspecialchars($ftp_port) ?>" placeholder="21" class="form-control">
+				</div>
+			</div>
+			
+			<div class="form-group">
+				<div class="col-sm-2 control-label"><label>Username</label></div>
+				<div class="col-sm-4 control">
+					<input type="text" name="ftp_user" value="<?=htmlspecialchars($ftp_user) ?>" placeholder="username" class="form-control">
+				</div>
+			</div>
+			<div class="form-group">
+				<div class="col-sm-2 control-label"><label>Password</label></div>
+				<div class="col-sm-4 control">
+					<input type="password" name="ftp_pwd" value="<?=htmlspecialchars($ftp_pwd) ?>" placeholder="****" class="form-control">
+				</div>
+			</div>
+			
+			<div class="form-group">
+				<div class="col-sm-2 control-label"><label>Destination Remote folder</label></div>
+				<div class="col-sm-10 control">
+					<input type="text" name="ftp_folder" value="<?=htmlspecialchars($ftp_folder) ?>" placeholder="/public_html/" class="form-control">
+				</div>
+			</div>
+		
+		</div>
+		
+		<br>
+		<div class="row">
+			<div class="col-sm-offset-2 col-sm-10">
+				<input type="submit" class="btn btn-lg btn-primary" value="Deploy!">
+			</div>
+		</div>
+		
 	</form>
 <br/>
 
@@ -250,7 +293,7 @@ if (!empty($_POST)) {
 				if (is_file($source)) {
 					if (strpos($file, '/')) {
 						createDir("$exportDir/" .dirname($file));
-						createDirFTP($ftp, "$exportDir/" .dirname($file));
+						createDirFTP($ftp, dirname($file));
 					}
 
 					copy($source, "$exportDir/$file");
