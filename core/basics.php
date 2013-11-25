@@ -36,6 +36,23 @@ if (!function_exists('enum')) {
 
 }
 
+if (!function_exists('sdir_rtrim')) {
+  
+  function sdir_rtrim($dir) {
+    return rtrim($dir, "\n\r\t\s/\\");
+  }
+
+}
+
+if (!function_exists('sdir')) {
+  
+  function sdir($string, $slash=DS, $end_slash=true) {
+    $string = str_replace(array('/', '\\'), $slash, $string);
+    return sdir_rtrim($string) . ($end_slash ? $slash : '');
+  }
+
+}
+
 if (!function_exists('cfg')) {
   
   /**

@@ -74,6 +74,7 @@ if (!$repo && is_file($lastRepoDirFile)) {
 $ini = parse_ini_file("options.ini");
 
 $range = isset($_POST['range']) ? $_POST['range'] : "HEAD~1 HEAD";
+$send_ftp = isset($_POST['send_ftp']) ? $_POST['send_ftp'] : $ini['send_ftp'];
 $ftp_host = isset($_POST['ftp_host']) ? $_POST['ftp_host'] : $ini['ftp_host'];
 $ftp_port = isset($_POST['ftp_port']) ? $_POST['ftp_port'] : $ini['ftp_port'];
 $ftp_user = isset($_POST['ftp_user']) ? $_POST['ftp_user'] : $ini['ftp_user'];
@@ -174,11 +175,11 @@ if (is_dir($basedir)) {
 		</div>
 		
 		<div class="form-group">
-			<div class="col-sm-2 control-label"><label>Destination Local folder</label></div>
+			<div class="col-sm-2 control-label"><label>Deploy folder</label></div>
 			<div class="col-sm-10 control">
 				<input type="text" name="." readonly value="<?=htmlspecialchars($exportDir) ?>" placeholder="You should define in .ini" class="form-control">
 				<div class="help-block">
-					Temporary folder where changed files will be moved. To change the folder, edit the .ini. Recommended a empty folder.
+					Temporary folder where changed files will be moved. It cleaned each deploy. To change the folder, edit the .ini. Recommended a empty folder.
 				</div>
 			</div>
 		</div>
@@ -193,13 +194,13 @@ if (is_dir($basedir)) {
 			<div class="col-sm-offset-2 col-sm-10">
 				<p class="form-control-static">
 					<label class="checkbox">
-						<input type="checkbox" name="send_ftp" value=1 checked onclick="document.getElementById('ftp').className=this.checked ? '' : 'closed';" /> Upload for ftp
+						<input type="checkbox" name="send_ftp" value=1 <?=$send_ftp? 'checked':''?> onclick="document.getElementById('ftp').className=this.checked ? '' : 'closed';" /> Upload to ftp
 					</label>
 				</p>
 			</div>
 		</div>
 		
-		<div id="ftp">
+		<div id="ftp"<?=$send_ftp? '':' class="closed"'?>>
 			<div class="form-group">
 				<div class="col-sm-2 control-label"><label>Host</label></div>
 				<div class="col-sm-5 control">
@@ -227,7 +228,7 @@ if (is_dir($basedir)) {
 			<div class="form-group">
 				<div class="col-sm-2 control-label"><label>Destination Remote folder</label></div>
 				<div class="col-sm-10 control">
-					<input type="text" name="ftp_folder" value="<?=htmlspecialchars($ftp_folder) ?>" placeholder="/public_html/" class="form-control">
+					<input type="text" name="ftp_folder" value="<?=htmlspecialchars($ftp_folder) ?>" placeholder="i.e. /public_html" class="form-control">
 				</div>
 			</div>
 		
@@ -277,13 +278,17 @@ if (!empty($_POST)) {
         exit;
     }
 
+    if ($send_ftp) {
 	$ftp = ftp_connect($ftp_host, $ftp_port);
+    } else {
+      $ftp = true;
+    }
 	
 	if ($ftp) {
 
-		if (ftp_login($ftp, $ftp_user, $ftp_pwd)) {
+		if (!$send_ftp || ftp_login($ftp, $ftp_user, $ftp_pwd)) {
 		
-			ftp_chdir($ftp, $ftp_folder);
+			if ($send_ftp) ftp_chdir($ftp, $ftp_folder);
 	
 			// $output contains a list of filenames with paths of changed files
 			foreach ($output as $file) {
@@ -293,12 +298,13 @@ if (!empty($_POST)) {
 				if (is_file($source)) {
 					if (strpos($file, '/')) {
 						createDir("$exportDir/" .dirname($file));
-						createDirFTP($ftp, dirname($file));
+						if ($send_ftp) createDirFTP($ftp, dirname($file));
 					}
 
 					copy($source, "$exportDir/$file");
-					ftp_put($ftp, "$file", "$exportDir/$file", FTP_ASCII);
+					if ($send_ftp) ftp_put($ftp, "$file", "$exportDir/$file", FTP_ASCII);
 					echo "$file<br/>\n";
+                                        if ($send_ftp) echo "<strong>uploaded</strong> $file<br/>\n";
 
 				} else {
 					// deleted file
@@ -308,7 +314,7 @@ if (!empty($_POST)) {
 		} else {
 			echo 'Error logging in to FTP<br>';
 		}	
-		ftp_close($ftp);
+		if ($send_ftp) ftp_close($ftp);
 		
 	} else {
 		echo 'Error connecting to FTP<br>';
