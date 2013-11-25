@@ -1,6 +1,18 @@
 <?php
 
+/**
+ * Time of the current request in seconds elapsed since the Unix Epoch.
+ *
+ * This differs from $_SERVER['REQUEST_TIME'], which is stored as a float
+ * since PHP 5.4.0. Float timestamps confuse most PHP functions
+ * (including date_create()).
+ *
+ * @see http://php.net/manual/reserved.variables.server.php
+ * @see http://php.net/manual/function.time.php
+ */
+define('START_REQUEST', $_SERVER['REQUEST_TIME_FLOAT'] ? $_SERVER['REQUEST_TIME_FLOAT'] : (int)$_SERVER['REQUEST_TIME']);
 define('START', microtime(true));
+$timeline = array();
 
 if (!defined('DS'))
   define('DS', DIRECTORY_SEPARATOR);
@@ -67,9 +79,15 @@ define('_DEV', $_SERVER['HTTP_HOST'] === 'localhost');
 // funções basicas
 include CORE_PATH.DS.'basics.php';
 
+// finish
+define('FINISH_BASICS', microtime(true));
+
 // CORE
 include CORE_PATH.DS.'core'.DS.'Core.php';
 Core::setup(); // inicia o core (autoloads, handler de exceptions, fatal errors, etc)
+
+// finish
+define('FINISH_CORE_LOAD', microtime(true));
 
 // verifica algumas integridades do sistema
 if (!is_dir(APP_PATH)) {
@@ -84,5 +102,11 @@ if (!is_dir(APP_PATH)) {
 include APP_PATH.DS.'cfg'.DS.'defs.php';
 include CORE_PATH.DS.'defs.php';
 
-if (!defined('_DEFS_ONLY'))
+// finish
+define('FINISH_DEFS', microtime(true));
+
+if (!defined('_DEFS_ONLY')) {
   include CORE_PATH.DS.'load.php';
+  // finish
+  define('FINISH_LOAD', microtime(true));
+}

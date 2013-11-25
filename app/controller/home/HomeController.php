@@ -85,6 +85,8 @@ class HomeController extends AppController {
       echo $f.'<br>';
     }
     echo '</pre>';*/
+    echo 'kfpsdof';
+    return;
     
     Core::uses('Arquivo', 'model/testes');
     

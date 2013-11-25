@@ -475,13 +475,28 @@ if (!function_exists('dump')) {
     );
   }
   
-  function finish() {
+  function finish($exit=true) {
+    $now = microtime(true);
+    $times = array(
+        FINISH_BASICS - START,
+        FINISH_CORE_LOAD - FINISH_BASICS,
+        FINISH_DEFS - FINISH_CORE_LOAD,
+        FINISH_LOAD - FINISH_DEFS,
+        $now - FINISH_LOAD,
+    );
     $end = microtime(true) - START;
     echo '<pre style="border:1px solid purple;background:white;font-family:Consolas,monospaced;font-size:13px;">';
+    echo '<div style="padding:10px;">';
+    echo '<strong>Bootstrap basics:</strong> '.($times[0]*1000).'ms ('.(round($times[0], 2)).' segundos)<br>';
+    echo '<strong>Core loading:</strong> '.    ($times[1]*1000).'ms ('.(round($times[1], 2)).' segundos)<br>';
+    echo '<strong>Definitions:</strong> '.     ($times[2]*1000).'ms ('.(round($times[2], 2)).' segundos)<br>';
+    echo '<strong>Load classes:</strong> '.    ($times[3]*1000).'ms ('.(round($times[3], 2)).' segundos)<br>';
+    echo '<strong>Application:</strong> '.     ($times[4]*1000).'ms ('.(round($times[4], 2)).' segundos)<br>';
+    echo '</div>';
     echo '<div style="color:white;background:purple;padding:10px;">';
-    echo '<strong>Tempo gasto: '.($end*1000).'ms ('.(round($end, 2)).' segundos)</strong><br>';
+    echo '<strong>Total: '.($end*1000).'ms ('.(round($end, 2)).' segundos)</strong><br>';
     echo '</div></pre>';
-    exit;
+    if ($exit) exit;
   }
   
 }

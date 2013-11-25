@@ -119,6 +119,9 @@ class Dispatcher {
         
       }
       
+      if (_DEV)
+        finish(false);
+      
       // pega o conteudo do buffer
       $contents = ob_get_clean();
       //ob_end_flush();
