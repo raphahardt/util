@@ -1,0 +1,7 @@
+
+
+default:
+  host: localhost
+  user: root
+  pwd: ''
+  schema: database
