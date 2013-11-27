@@ -1,9 +1,13 @@
 <?php
 
-Core::uses('SessionCommon', 'core/session');
+namespace Djck\session;
 
-Core::depends('Dbc');
-Core::uses('Request', 'core/network'); // para saber o ip do visitante
+use Djck\Core;
+use Djck\database\Dbc;
+use Djck\network\Request; // pra saber ip visitante
+use Djck\session\SessionCommon;
+
+Core::uses('SessionCommon', 'Djck\session');
 
 class SessionDbc extends SessionCommon {
   

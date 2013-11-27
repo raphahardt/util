@@ -1,6 +1,9 @@
 <?php
 
-Core::depends('View');
+namespace App\view;
+
+use Djck\Core;
+use Djck\mvc\View;
 
 /**
  * Description of AppView

@@ -1,13 +1,15 @@
 <?php
 
-Core::import('Smarty', 'plugin/smarty');
+namespace Djck\mailer;
+
+Core::import('Smarty', '/plugin/smarty');
 
 /**
  * Description of View
  *
  * @author
  */
-class MailerTemplate extends Smarty {
+class MailerTemplate extends \Smarty {
   
   // pagina que será exibida
   private $view = array();

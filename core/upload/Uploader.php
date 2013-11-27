@@ -1,7 +1,11 @@
 <?php
 
-Core::depends('Request');
-Core::import('UploadHandler', 'plugin/blueimp-upload');
+namespace Djck\upload;
+
+use Djck\Core;
+use Djck\network\Request;
+
+Core::import('UploadHandler', '/plugin/blueimp-upload');
 
 /**
  * Description of Upload
@@ -9,7 +13,7 @@ Core::import('UploadHandler', 'plugin/blueimp-upload');
  * @author usuario
  */
 
-class Uploader extends UploadHandler {
+class Uploader extends \UploadHandler {
   
   private $request;
   

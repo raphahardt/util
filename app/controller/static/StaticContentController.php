@@ -1,6 +1,11 @@
 <?php
 
-Core::uses('AppController', 'controller');
+namespace App\controller\_static;
+
+use Djck\Core;
+use App\contoller\AppController;
+
+Core::uses('AppController', 'App');
 
 class Resource {
   

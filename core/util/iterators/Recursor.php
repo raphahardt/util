@@ -1,5 +1,7 @@
 <?php
 
+namespace Djck\util\iterator;
+
 /**
  * This file is part of the Nette Framework (http://nette.org)
  *
@@ -14,7 +16,7 @@
  *
  * @author     David Grudl
  */
-class Recursor extends IteratorIterator implements RecursiveIterator, Countable
+class Recursor extends \IteratorIterator implements \RecursiveIterator, \Countable
 {
 
 	/**
@@ -24,8 +26,8 @@ class Recursor extends IteratorIterator implements RecursiveIterator, Countable
 	public function hasChildren()
 	{
 		$obj = $this->current();
-		return ($obj instanceof IteratorAggregate && $obj->getIterator() instanceof RecursiveIterator)
-			|| $obj instanceof RecursiveIterator;
+		return ($obj instanceof \IteratorAggregate && $obj->getIterator() instanceof \RecursiveIterator)
+			|| $obj instanceof \RecursiveIterator;
 	}
 
 
@@ -36,7 +38,7 @@ class Recursor extends IteratorIterator implements RecursiveIterator, Countable
 	public function getChildren()
 	{
 		$obj = $this->current();
-		return $obj instanceof IteratorAggregate ? $obj->getIterator() : $obj;
+		return $obj instanceof \IteratorAggregate ? $obj->getIterator() : $obj;
 	}
 
 

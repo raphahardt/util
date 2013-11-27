@@ -1,12 +1,14 @@
 <?php
 
-Core::import('PHPMailerAutoload', 'plugin/phpmailer');
+namespace Djck\mailer;
+
+Core::import('PHPMailerAutoload', '/plugin/phpmailer');
 /**
  * Description of Mailer
  *
  * @author usuario
  */
-class Mailer extends PHPMailer {
+class Mailer extends \PHPMailer {
   
   function __construct($exceptions = false) {
     parent::__construct(true); // sempre jogar exceptions

@@ -1,5 +1,8 @@
 <?php
 
+namespace Djck;
+
+use Djck\Core;
 
 class DispatcherException extends CoreException {};
 
@@ -38,7 +41,7 @@ class Dispatcher {
     if (class_exists($class_name)) {
       
       // reflexão da classe do controller
-      $rflc_class = new ReflectionClass($class_name);
+      $rflc_class = new \ReflectionClass($class_name);
       
       $class = new $class_name(); //TODO: tirar q e colocar url de um lugar melhor
 
@@ -83,7 +86,7 @@ class Dispatcher {
               // se o metodo tiver $view, instanciar uma view automaticamente de 
               // acordo com o tipo de objeto que veio
               $class_view = $rflc_param->getClass()->getName();
-              Core::depends($class_view);
+              //Core::depends($class_view); // TODO depender da classe chamada, ou deixar assim...
               
               $view = new $class_view($class->viewPath."$action.tpl");
               
@@ -119,8 +122,8 @@ class Dispatcher {
         
       }
       
-      if (_DEV)
-        finish(false);
+      //if (_DEV && $class->response->type() !== 'json')
+        //finish(false);
       
       // pega o conteudo do buffer
       $contents = ob_get_clean();

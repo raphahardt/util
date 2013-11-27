@@ -1,6 +1,11 @@
 <?php
 
-Core::uses('Hash', 'core/utility');
+namespace Djck\network;
+
+use Djck\Core;
+use Djck\util\Hash;
+
+Core::uses('Hash', 'Djck\util');
 
 /**
  * Description of Request

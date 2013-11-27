@@ -1,7 +1,13 @@
 <?php
 
-Core::uses('AppController', 'controller');
-Core::uses('AppView', 'view');
+namespace App\controller\home;
+
+use Djck\Core;
+use App\controller\AppController;
+use App\view\AppView;
+
+Core::uses('AppController', 'App');
+Core::uses('AppView', 'App');
 
 /**
  * Description of HomeController

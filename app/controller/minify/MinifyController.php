@@ -1,8 +1,16 @@
 <?php
 
-Core::uses('AppController', 'controller');
+namespace App\controller\minify;
 
-Core::import('Minify_Loader', 'plugin/min/lib/Minify/Loader.php'); // nome do arquivo não bate com nome da classe
+use Djck\Core;
+use App\controller\AppController;
+use Minify;
+use Minify_Loader;
+use Minify_Logger;
+
+Core::uses('AppController', 'App');
+
+Core::import('Minify_Loader', '/plugin/min/lib/Minify/Loader.php'); // nome do arquivo não bate com nome da classe
 
 /**
  * Description of HomeController
@@ -54,6 +62,10 @@ class MinifyController extends AppController {
     Minify::setCache(
             isset($config['cachePath']) ? $config['cachePath'] : '', $config['cacheFileLocking']
     );
+    // cria pasta, se ela nao existe
+    if (isset($config['cachePath']) && !is_dir($config['cachePath'])) {
+      mkdir($config['cachePath'], 0777);
+    }
 
     if ($config['documentRoot']) {
       $_SERVER['DOCUMENT_ROOT'] = $config['documentRoot'];

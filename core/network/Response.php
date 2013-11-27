@@ -1,5 +1,9 @@
 <?php
 
+namespace Djck\network;
+
+use Djck\Core;
+
 /**
  * CakeResponse
  *

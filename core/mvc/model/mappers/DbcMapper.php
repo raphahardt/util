@@ -1,11 +1,11 @@
 <?php
 
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
+namespace Djck\mvc\mappers;
 
-Core::depends('Dbc');
+use Djck\Core;
+use Djck\database\Dbc;
+use Djck\mvc\Mapper;
+use Djck\mvc\DatabaseMapperInterface;
 
 /**
  * Description of DbcMapper

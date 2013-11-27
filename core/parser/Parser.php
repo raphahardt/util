@@ -1,9 +1,13 @@
 <?php
 
-// usa Neon (do framework Lette) como parser para os arquivos de configuração
-Core::import('Neon', 'plugin/neon');
+namespace Djck\parser;
 
-class Parser extends Neon {
+use Djck\Core;
+
+// usa Neon (do framework Lette) como parser para os arquivos de configuração
+Core::import('Neon', '/plugin/neon');
+
+class Parser extends \Neon {
   // TODO: fazer ele fazer cache da leituras e ler direto de um .php já parsado
   
   /**

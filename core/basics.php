@@ -1,5 +1,7 @@
 <?php
 
+use Djck\Core;
+
 /*
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
@@ -27,7 +29,7 @@ if (!function_exists('enum')) {
     $args = func_get_args();
     foreach ($args as $key => $arg) {
       if (defined($arg)) {
-        throw new RuntimeException('Redefinition of defined constant ' . $arg);
+        throw new \RuntimeException('Redefinition of defined constant ' . $arg);
       }
 
       define($arg, $key);
@@ -62,21 +64,22 @@ if (!function_exists('cfg')) {
    * @throws CoreException
    */
   function cfg($file) {
-    Core::depends('Parser');
+    // TODO algo de forçar fazer load do parser, ou deixar assim...
+    //Core::depends('parser\Parser');
     
     // a funcao irá retornar a config "mergida" do core e do app, automaticamente
     // sempre as config de app sobrescrevem/adicionam as de core
-    $file_ = DS.'cfg'.DS.$file. Parser::$extension;
+    $file_ = DS.'cfg'.DS.$file. Djck\parser\Parser::$extension;
     
     // nenhuma cfg foi encontrada
     $exists_core = is_file(DJCK.$file_);
     $exists_app = is_file(APP_PATH.$file_);
     if (!$exists_core && !$exists_app) {
-      throw new CoreException('Config "'.$file.'" não encontrada');
+      throw new Djck\CoreException('Config "'.$file.'" não encontrada');
     }
     
-    $cfg_core = $exists_core ? Parser::decode(file_get_contents(DJCK.$file_))     : null;
-    $cfg_app  = $exists_app  ? Parser::decode(file_get_contents(APP_PATH.$file_)) : null;
+    $cfg_core = $exists_core ? Djck\parser\Parser::decode(file_get_contents(DJCK.$file_))     : null;
+    $cfg_app  = $exists_app  ? Djck\parser\Parser::decode(file_get_contents(APP_PATH.$file_)) : null;
     
     $cfg = array_merge_recursive((array)$cfg_core, (array)$cfg_app);
     array_walk_recursive($cfg, '_iterator_normalize_cfg');
@@ -139,6 +142,17 @@ if (!function_exists('class_alias')) {
     eval("class $alias extends $original {};");
   }
   
+}
+
+if (!function_exists('get_class_name')) {
+  function get_class_name($object = null) {
+    if (!is_object($object) && !is_string($object)) {
+      return false;
+    }
+    
+    $object = (is_string($object) ? $object : get_class($object));
+    return substr($object, strrpos($object, '\\'));
+  }
 }
 
 if (!function_exists('env')) {
@@ -333,6 +347,7 @@ if (!function_exists('json')) {
    * @return string
    */
   function json($string, $options = 0) {
+    $string = utf8e($string);
     if (version_compare(PHP_VERSION, '5.3.0', '>=')) {
       return json_encode($string, $options);
     } else {
@@ -630,6 +645,10 @@ if (!function_exists('utf8d')) {
    * @return string
    */
   function utf8d($string) {
+    // se for array, aplica em cada elemento (recursivo)
+    if (is_array($string)) {
+      return array_map('utf8d', $string);
+    }
     if (!seems_utf8($string)) {
       return $string;
     }
@@ -646,6 +665,10 @@ if (!function_exists('utf8e')) {
    * @return string
    */
   function utf8e($string) {
+    // se for array, aplica em cada elemento (recursivo)
+    if (is_array($string)) {
+      return array_map('utf8e', $string);
+    }
     if (seems_utf8($string)) {
       return $string;
     }

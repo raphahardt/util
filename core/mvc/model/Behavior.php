@@ -1,12 +1,16 @@
 <?php
 
+namespace Djck\mvc;
+
+use Djck\Core;
+
 /*
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
 
 // registra os behaviors principais
-$package = 'core/mvc/model/behaviors';
+$package = '/core/mvc/model/behaviors';
 Core::register('SingleBehavior', $package);
 Core::register('CollectionBehavior', $package);
 

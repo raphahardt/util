@@ -1,5 +1,8 @@
 <?php
 
+use Djck\Core;
+use Djck\CoreException;
+
 Core::register('SQLConditional', 'core/database/sql');
 Core::register('SQLCriteria', 'core/database/sql');
 Core::register('SQLEntityBase', 'core/database/sql');

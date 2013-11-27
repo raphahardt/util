@@ -1,6 +1,9 @@
 <?php
 
-Core::depends('Controller');
+namespace App\controller;
+
+use Djck\Core;
+use Djck\mvc\Controller;
 
 /**
  * Description of AppController

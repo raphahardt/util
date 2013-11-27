@@ -1,5 +1,7 @@
 <?php
 
+namespace Djck;
+
 /*
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
@@ -14,7 +16,7 @@ if (!defined('APP_PATH'))
 if (!defined('PLUGIN_PATH'))
   define('PLUGIN_PATH', DJCK.DS.'plugins');
 
-class CoreException extends Exception {}
+class CoreException extends \Exception {}
 
 /**
  * Description of Core
@@ -57,6 +59,10 @@ abstract class Core {
     // pega pasta correta
     $parsed = self::_parseFile($class, $path);
     
+    if (strpos($path, '/') !== 0) {
+      $class = $path.'\\'.$class; // adiciona o namespace na classe, se tiver
+    }
+    
     // sanitize class name
     $class = strtolower($class);
     
@@ -75,6 +81,15 @@ abstract class Core {
   
   // retorna o caminho correto
   final static function path($path) {
+    
+    // procurando classe por namespace
+    if (strpos($path, '/') !== 0) {
+      $abs_path = str_replace('Djck', CORE_PATH, $path);
+      $abs_path = str_replace('App', APP_PATH, $abs_path);
+      return str_replace('\\', DS, $abs_path);
+    } else {
+      $path = substr($path, 1);
+    }
     
     $parts = explode('/', $path);
     $type = array_shift($parts);
@@ -194,9 +209,10 @@ abstract class Core {
     ++self::$calls;
     
     // If the class already exists do nothing.
-    if (!class_exists(strtolower($class), false)) {
+    $namespaced_class = str_replace('.', '\\', strtolower($class));
+    if (!class_exists(__NAMESPACE__.'\\'.$namespaced_class, false)) {
       $trace = debug_backtrace();
-      throw new Exception('Arquivo '.basename($trace[0]['file']).' depende da classe '.$class);
+      throw new CoreException('Arquivo '.basename($trace[0]['file']).' depende da classe '.$class);
     }
   }
   
@@ -227,7 +243,7 @@ abstract class Core {
             0 * E_RECOVERABLE_ERROR |
             1 * (defined('E_DEPRECATED') ? E_DEPRECATED : 0) |
             0 * (defined('E_USER_DEPRECATED') ? E_USER_DEPRECATED : 0);
-    $ex = new ErrorException($errstr, $errno, $errno, $errfile, $errline);
+    $ex = new \ErrorException($errstr, $errno, $errno, $errfile, $errline);
     if (($ex->getSeverity() & $severity) != 0) {
       throw $ex;
     }
@@ -249,7 +265,7 @@ abstract class Core {
       // manda o erro como exception e captura depois com o handler padrao
       try {
         self::error_handler($errno, $errstr, $errfile, $errline);
-      } catch (Exception $e) {
+      } catch (\Exception $e) {
         self::exception_handler($e);
       }
     }
@@ -286,16 +302,16 @@ abstract class Core {
   
   final static function setup() {
     // define auto loader
-    spl_autoload_register(array('Core', 'load'));
+    spl_autoload_register(array(__CLASS__, 'load'));
     
     // define handler de errors do php para sempre jogarem exceptions
     //error_reporting(0); // COMENTADO PQ NÃO É PARA DESABILITAR OS ERROS POR AQUI
-    @ini_set('display_errors', false);
-    set_error_handler(array('Core', 'error_handler'));
-    register_shutdown_function(array('Core', 'fatal_error_handler'));
+    @ini_set('display_errors', _DEV);
+    set_error_handler(array(__CLASS__, 'error_handler'));
+    register_shutdown_function(array(__CLASS__, 'fatal_error_handler'));
     
     // lida com os exceptions que nao foram capturados
-    set_exception_handler(array('Core', 'exception_handler'));
+    set_exception_handler(array(__CLASS__, 'exception_handler'));
   }
   
   static function dump() {

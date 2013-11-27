@@ -1,13 +1,17 @@
 <?php
 
-Core::import('Smarty', 'plugin/smarty');
+namespace Djck\mvc;
+
+use Djck\Core;
+
+Core::import('Smarty', '/plugin/smarty');
 
 /**
  * Description of View
  *
  * @author Rapha e Dani
  */
-class View extends Smarty {
+class View extends \Smarty {
   
   // pagina que será exibida
   private $view = array();
@@ -150,7 +154,7 @@ class View extends Smarty {
       else
         $this->display($views[0]);
       
-    } catch (SmartyException $e) {
+    } catch (\SmartyException $e) {
       throw $e;
     }
   }

@@ -1,48 +1,52 @@
 <?php
 
+namespace Djck;
+
+use Djck\Core;
+
 /**
  * Carrega as classes core principais e as configurações referentes a core e app.
  * Não mudar este arquivo (somente em caso de algum core for essencial carregar). 
  */
 // essentials
-Core::import('AbstractObject',    'core/core');
-Core::import('AbstractSingleton', 'core/core');
+Core::import('AbstractObject',    '/core/core');
+Core::import('AbstractSingleton', '/core/core');
 
 // interface
-Core::import('Response',   'core/network');
-Core::import('Request',    'core/network');
-Core::import('Dispatcher', 'core/core');
+Core::import('Response',   '/core/network');
+Core::import('Request',    '/core/network');
+Core::import('Dispatcher', '/core/core');
 
 // database
-Core::import('DbcConfig', 'core/database/dbc');
+/*Core::import('DbcConfig', 'core/database/dbc');
 Core::import('Dbc',       'core/database/dbc');
-Core::import('SQLBase',   'core/database/sql');
+Core::import('SQLBase',   'core/database/sql');*/
 
 // mvc
-Core::import('Controller', 'core/mvc/controller');
-Core::import('Mapper',     'core/mvc/model');
-Core::import('Behavior',   'core/mvc/model');
-Core::import('Model',      'core/mvc/model');
-Core::import('View',       'core/mvc/view');
+Core::import('Controller', '/core/mvc/controller');
+Core::import('Mapper',     '/core/mvc/model');
+Core::import('Behavior',   '/core/mvc/model');
+Core::import('Model',      '/core/mvc/model');
+Core::import('View',       '/core/mvc/view');
 
 // router
-Core::import('Router', 'core/router');
+Core::import('Router', '/core/router');
 
 // client comm
-Core::import('Cookie', 'core/cookie');
+Core::import('Cookie', '/core/cookie');
 
 // logger
-Core::import('Logger', 'core/logger');
+Core::import('Logger', '/core/logger');
 
 // upload handler (https://github.com/blueimp/jQuery-File-Upload/blob/master/server/php/UploadHandler.php)
-Core::import('Uploader', 'core/upload');
+Core::import('Uploader', '/core/upload');
 
 // neon parser (para ler configuracoes em .neon)
-Core::import('Parser', 'core/parser');
+Core::import('Parser', '/core/parser');
 
 // classes para debug, testes, e utilidades só usadas localmente
 if (_DEV) {
-  Core::import('UnitTest', 'core/utility');
+  Core::import('UnitTest', '/core/util');
 }
 
 // --------------------------------------
@@ -65,41 +69,43 @@ unset($class,$path); //memoria
 
 // -------------------------------------------------------------------------------------
 // pegando configurações do banco (Connectios.neon) ------------------------------------
-Core::depends('DbcConfig');
-$cfg = cfg('Connections');
-foreach ($cfg as $name => $dbc_config) {
-  
-  if (is_string($dbc_config)) {
-    // modo link
-    DbcConfig::set($name, DbcConfig::get($dbc_config));
-    
-  } else {
-    // modo normal
-    DbcConfig::set($name, array(
-      '#host'     => $dbc_config['host'],
-      '#user'     => $dbc_config['user'],
-      '#password' => $dbc_config['pwd'],
-      '#schema'   => $dbc_config['schema']
-    ));
-    
+if (class_exists('database\DbcConfig', false)) {
+  $cfg = cfg('Connections');
+  foreach ($cfg as $name => $dbc_config) {
+
+    if (is_string($dbc_config)) {
+      // modo link
+      database\DbcConfig::set($name, database\DbcConfig::get($dbc_config));
+
+    } else {
+      // modo normal
+      database\DbcConfig::set($name, array(
+        '#host'     => $dbc_config['host'],
+        '#user'     => $dbc_config['user'],
+        '#password' => $dbc_config['pwd'],
+        '#schema'   => $dbc_config['schema']
+      ));
+
+    }
+
   }
-  
+  unset($name,$dbc_config); //memoria
 }
-unset($name,$dbc_config); //memoria
 
 // -------------------------------------------------------------------------------------
 // importando controllers e mapeando rotas (Routes.neon) -------------------------------
 $cfg = cfg('Routes');
 // controllers
 foreach ($cfg['controllers'] as $controller => $path) {
-  if (is_string($controller))
-  Core::register($controller, 'controller'.$path);
+  if (is_string($controller)) {
+    Core::register($controller, '/controller'.$path);
+  }
 }
 unset($controller,$path); //memoria
 
 // routes
 if (!isset($Router)) {
-  $Router = new Router(SITE_URL);
+  $Router = new router\Router(SITE_URL);
 }
 foreach ($cfg['routes'] as $name => $route_config) {
   $url = $route_config['url'];
@@ -141,15 +147,16 @@ if (!$cfg) {
   $cfg = array('class' => 'SessionFile');
 }
 // se a classe não existir, criar uma nova classe
-Core::uses($cfg['class'], 'core/session');
-class_alias($cfg['class'], 'Session');
+Core::uses($cfg['class'], 'Djck\session');
+$session_class = __NAMESPACE__.'\\session\\'.$cfg['class'];
 
-$Session = new Session();
+$Session = new $session_class();
 $Session->table_name = $cfg['table']; // FIXME: provisorio
 
 // token
-if (!$_SESSION[SESSION_TOKEN_NAME])
+if (!$_SESSION[SESSION_TOKEN_NAME]) {
   $_SESSION[SESSION_TOKEN_NAME] = g_token();
+}
 
 // se usuario logou, regerar session
 if ($_SESSION['logged']) {
@@ -182,7 +189,7 @@ if (in_array($url_parts[0], $cfg['languages']) || isset($cfg['similar'][$url_par
   $lang = $url_parts[0];
 } else {
   // se não, tentar ler o que vem do browser (header Accept-Language)
-  $langs = Request::acceptLanguage();
+  $langs = network\Request::acceptLanguage();
   $lang = reset($langs); // primeira do accept geralm/e é a lang padrão do browser do user
 }
 

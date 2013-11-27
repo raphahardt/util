@@ -1,9 +1,9 @@
 <?php
 
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
+namespace Djck\mvc\mappers;
+
+use Djck\mvc\Mapper;
+use Djck\mvc\NestedMapperInterface;
 
 // persistencia do mapper em xml
 class XmlMapper extends Mapper implements NestedMapperInterface {

@@ -1,9 +1,11 @@
 <?php
 
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
+namespace Djck\mvc\behaviors;
+
+use Djck\Core;
+use Djck\mvc\Model;
+
+Core::uses('SingleBehavior', 'Djck\mvc\behaviors');
 
 /**
  * Description of CollectionBehavior
@@ -86,7 +88,7 @@ class CollectionBehavior extends SingleBehavior {
   }
   
   public function select(Model $Model) {
-    if ($Model->Mapper instanceOf DatabaseMapperInterface) {
+    if ($Model->Mapper instanceOf \Djck\mvc\DatabaseMapperInterface) {
       $Model->Mapper->select();
     }
     $Model->Mapper->first();
@@ -120,12 +122,12 @@ class CollectionBehavior extends SingleBehavior {
   }
 
   public function offsetSet(Model $Model, $offset, $value) {
-    throw new CoreException('Não é possivel definir dados diretamente no collection. '.
+    throw new \Djck\CoreException('Não é possivel definir dados diretamente no collection. '.
             'Para isso, use push() ou unshift()');
   }
 
   public function offsetUnset(Model $Model, $offset) {
-    throw new CoreException('Não é possivel definir dados diretamente no collection. '.
+    throw new \Djck\CoreException('Não é possivel definir dados diretamente no collection. '.
             'Para isso, use push() ou unshift()');
   }
   

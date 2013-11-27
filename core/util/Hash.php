@@ -1,4 +1,7 @@
 <?php
+
+namespace Djck\util;
+
 /**
  * Description of Hash
  *

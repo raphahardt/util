@@ -1,14 +1,11 @@
 <?php
 
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+namespace Djck\system;
 
-Core::depends('AbstractObject');
+use Djck\Core;
+use Djck\system\AbstractObject;
 
-abstract class AbstractSingleton {
+abstract class AbstractSingleton extends AbstractObject {
 
   /**
    * Guarda as instancias singletons das classes instanciadas.

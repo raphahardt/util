@@ -1,5 +1,11 @@
 <?php
 
+namespace Djck\mvc;
+
+use Djck\Core;
+use Djck\CoreException;
+use Djck\mvc\Model;
+
 class ModelException extends CoreException {}
 
 /**
@@ -35,7 +41,7 @@ class ModelException extends CoreException {}
  * @since 0.1 (24/09/2013)
  * @version 0.1 (24/09/2013)
  */
-class Model implements ArrayAccess, Countable, Iterator {
+class Model implements \ArrayAccess, \Countable, \Iterator {
   
   /**
    * Instancias únicas dos Behaviors usados no momento. Models compartilham Behaviors

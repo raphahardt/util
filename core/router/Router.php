@@ -1,11 +1,13 @@
 <?php
 
+namespace Djck\router;
+
+use Djck\Core;
+use Djck\CoreException;
+
 /**
  * Baseado no AutoRouter https://github.com/dannyvankooten/AltoRouter
  */
-
-Core::depends('Controller');
-Core::depends('View');
 
 class RouterException extends CoreException {}
 
@@ -59,7 +61,7 @@ class Router {
 
     if ($name) {
       if (isset($this->namedRoutes[$name])) {
-        throw new Exception("Can not redeclare route '{$name}'");
+        throw new RouterException("Can not redeclare route '{$name}'");
       } else {
         $this->namedRoutes[$name] = array(
             'route' => $route,

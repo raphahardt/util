@@ -1,5 +1,7 @@
 <?php
 
+use Djck\Core;
+
 /**
  * Time of the current request in seconds elapsed since the Unix Epoch.
  *
@@ -10,7 +12,6 @@
  * @see http://php.net/manual/reserved.variables.server.php
  * @see http://php.net/manual/function.time.php
  */
-define('START_REQUEST', $_SERVER['REQUEST_TIME_FLOAT'] ? $_SERVER['REQUEST_TIME_FLOAT'] : (int)$_SERVER['REQUEST_TIME']);
 define('START', microtime(true));
 $timeline = array();
 

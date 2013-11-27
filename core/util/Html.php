@@ -1,5 +1,9 @@
 <?php
 
+namespace Djck\util;
+
+use Djck\util\iterators\Recursor;
+
 /**
  * This file is part of the Nette Framework (http://nette.org)
  *
@@ -9,7 +13,7 @@
  * the file license.txt that was distributed with this source code.
  */
 
-Core::uses('Recursor', 'utility/iterators');
+Core::uses('Recursor', 'Djck\util\iterators');
 
 /**
  * HTML helper.
@@ -24,7 +28,7 @@ Core::uses('Recursor', 'utility/iterators');
  *
  * @author     David Grudl
  */
-class Html implements ArrayAccess, Countable, IteratorAggregate {
+class Html implements \ArrayAccess, \Countable, \IteratorAggregate {
 
   /** @var string  element's name */
   private $name;
@@ -81,7 +85,7 @@ class Html implements ArrayAccess, Countable, IteratorAggregate {
    */
   final public function setName($name, $isEmpty = NULL) {
     if ($name !== NULL && !is_string($name)) {
-      throw new InvalidArgumentException("Name must be string or NULL, " . gettype($name) . " given.");
+      throw new \InvalidArgumentException("Name must be string or NULL, " . gettype($name) . " given.");
     }
 
     $this->name = $name;
@@ -209,7 +213,7 @@ class Html implements ArrayAccess, Countable, IteratorAggregate {
    */
   final public function setHtml($html) {
     if (is_array($html)) {
-      throw new InvalidArgumentException("Textual content must be a scalar, " . gettype($html) . " given.");
+      throw new \InvalidArgumentException("Textual content must be a scalar, " . gettype($html) . " given.");
     }
     $this->removeChildren();
     $this->children[] = (string) $html;
@@ -289,7 +293,7 @@ class Html implements ArrayAccess, Countable, IteratorAggregate {
         array_splice($this->children, (int) $index, $replace ? 1 : 0, array($child));
       }
     } else {
-      throw new InvalidArgumentException("Child node must be scalar or Html object, " . (is_object($child) ? get_class($child) : gettype($child)) . " given.");
+      throw new \InvalidArgumentException("Child node must be scalar or Html object, " . (is_object($child) ? get_class($child) : gettype($child)) . " given.");
     }
 
     return $this;
@@ -358,10 +362,10 @@ class Html implements ArrayAccess, Countable, IteratorAggregate {
    */
   final public function getIterator($deep = FALSE) {
     if ($deep) {
-      $deep = $deep > 0 ? RecursiveIteratorIterator::SELF_FIRST : RecursiveIteratorIterator::CHILD_FIRST;
-      return new RecursiveIteratorIterator(new Recursor(new ArrayIterator($this->children)), $deep);
+      $deep = $deep > 0 ? \RecursiveIteratorIterator::SELF_FIRST : \RecursiveIteratorIterator::CHILD_FIRST;
+      return new \RecursiveIteratorIterator(new Recursor(new \ArrayIterator($this->children)), $deep);
     } else {
-      return new Recursor(new ArrayIterator($this->children));
+      return new Recursor(new \ArrayIterator($this->children));
     }
   }
 

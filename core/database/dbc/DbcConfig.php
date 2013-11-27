@@ -1,5 +1,7 @@
 <?php
 
+namespace Djck\database;
+
 /**
  * ESTA CLASSE FOI DESENHADA PARA ORACLE 10g<br>
  * Classe estática que guarda a configuração de conexão com o banco de dados.<br>

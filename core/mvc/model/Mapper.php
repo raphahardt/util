@@ -1,12 +1,16 @@
 <?php
 
+namespace Djck\mvc;
+
+use Djck\Core;
+
 /*
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
 
 // registra os mappers principais
-$package = 'core/mvc/model/mappers';
+$package = '/core/mvc/model/mappers';
 Core::register('DbcMapper', $package);
 Core::register('TempMapper', $package);
 Core::register('FileMapper', $package);
@@ -72,7 +76,7 @@ interface NestedMapperInterface extends DefaultMapperInterface {
  * @author Raphael Hardt <sistema13@furacao.com.br>
  * @version 0.1 (24/09/2013)
  */
-abstract class Mapper implements ArrayAccess {
+abstract class Mapper implements \ArrayAccess {
   
   const FRESH = 0;
   const PERSISTED = 1;

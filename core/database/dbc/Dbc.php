@@ -1,7 +1,11 @@
 <?php
 
-Core::depends('DbcConfig');
-Core::depends('AbstractSingleton');
+namespace Djck\database;
+
+use Djck\Core;
+use Djck\CoreException;
+use Djck\database\DbcConfig;
+use Djck\system\AbstractSingleton;
 
 class DbcException extends CoreException {}
 

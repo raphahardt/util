@@ -1,7 +1,12 @@
 <?php
 
-Core::depends('Request');
-Core::depends('Response');
+namespace Djck\mvc;
+
+use Djck\Core;
+use Djck\CoreException;
+
+use Djck\network\Request;
+use Djck\network\Response;
 
 class ControllerException extends CoreException {}
 
@@ -9,22 +14,22 @@ abstract class Controller {
   
   /**
    *
-   * @var Request 
+   * @var Djck\network\Request 
    */
   public $request;
   /**
    *
-   * @var Response 
+   * @var Djck\network\Response 
    */
   public $response;
   /**
    *
-   * @var Router 
+   * @var Djck\router\Router 
    */
   public $router;
   /**
    *
-   * @var Session 
+   * @var Djck\session\Session 
    */
   protected $session;
   
@@ -47,8 +52,8 @@ abstract class Controller {
     if (isset($Session))
       $this->session = &$Session;
     else {
-      Core::depends('Session');
-      $this->session = new Session();
+      //Core::depends('session\Session');
+      $this->session = new \Session();
     }
    
     $this->request = new Request();

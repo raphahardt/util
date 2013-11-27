@@ -1,6 +1,11 @@
 <?php
 
-Core::uses('SessionCommon', 'core/session');
+namespace Djck\session;
+
+use Djck\Core;
+use Djck\session\SessionCommon;
+
+Core::uses('SessionCommon', 'Djck\session');
 
 class SessionFile extends SessionCommon {
   

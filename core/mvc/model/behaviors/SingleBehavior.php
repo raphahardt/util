@@ -1,9 +1,9 @@
 <?php
 
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
+namespace Djck\mvc\behaviors;
+
+use Djck\mvc\Behavior;
+use Djck\mvc\Model;
 
 /**
  * Description of SingleBehavior
@@ -57,7 +57,7 @@ class SingleBehavior extends Behavior {
       return $Model->uses('Collection')->select();
     }
     // se for database, faz select no banco primeiro
-    if ($Model->Mapper instanceOf DatabaseMapperInterface) {
+    if ($Model->Mapper instanceOf \Djck\mvc\DatabaseMapperInterface) {
       $Model->Mapper->select();
       // só atualiza o registro atual se encontrar apenas 1 registro
       if ($Model->Mapper->count() != 1) {
@@ -91,10 +91,10 @@ class SingleBehavior extends Behavior {
       //return $Model->uses('Collection')->insert();
 	  // TODO
     }
-    if ($Model->Mapper instanceOf DatabaseMapperInterface) {
+    if ($Model->Mapper instanceOf \Djck\mvc\DatabaseMapperInterface) {
       //$return = $Model->Mapper->insertOne(); // TODO
       $return = $Model->Mapper->insert();
-    } elseif ($Model->Mapper instanceof DefaultMapperInterface) {
+    } elseif ($Model->Mapper instanceof \Djck\mvc\DefaultMapperInterface) {
       $Model->Mapper->push();
       $return = $Model->Mapper->autoCommit() ? $Model->Mapper->commit() : true;
     }
@@ -102,9 +102,9 @@ class SingleBehavior extends Behavior {
   }
   
   public function update(Model $Model) {
-    if ($Model->Mapper instanceOf DatabaseMapperInterface) {
+    if ($Model->Mapper instanceOf \Djck\mvc\DatabaseMapperInterface) {
       $return = $Model->Mapper->update();
-    } elseif ($Model->Mapper instanceof DefaultMapperInterface) {
+    } elseif ($Model->Mapper instanceof \Djck\mvc\DefaultMapperInterface) {
       $Model->Mapper->refresh();
       $return = $Model->Mapper->autoCommit() ? $Model->Mapper->commit() : true;
     }
@@ -115,7 +115,7 @@ class SingleBehavior extends Behavior {
     // todos mappers tem essa funcao, e nos de database, ele apaga sem alterar o result,
     // diferente do delete() do dbcmapper
     $return = $Model->Mapper->remove();
-    if ($Model->Mapper instanceof DefaultMapperInterface) {
+    if ($Model->Mapper instanceof \Djck\mvc\DefaultMapperInterface) {
       $return && $return = $Model->Mapper->autoCommit() ? $Model->Mapper->commit() : true;
     }
     return $return;

@@ -1,5 +1,11 @@
 <?php
 
+namespace Djck\cookie;
+
+use Djck\CoreException;
+
+class CookieException extends CoreException{}
+
 /**
  * Classe para manipulação de cookies
  * 
@@ -33,7 +39,7 @@ class Cookie {
   public function __construct($name, $expire = 0, $path = null, $domain = null, $secure = null, $httponly = null) {
 
     if ($expire < 0)
-      throw new Exception('Set a positive expire value');
+      throw new CookieException('Set a positive expire value');
 
     if (is_string($expire) && !is_numeric($expire)) {
       $expire = strtotime($expire);
@@ -68,7 +74,7 @@ class Cookie {
   public function set($value) {
     
     if (headers_sent()) {
-      throw new Exception('Headers already been sent');
+      throw new CookieException('Headers already been sent');
     }
     
     $this->rawvalue = $value;

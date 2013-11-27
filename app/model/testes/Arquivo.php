@@ -1,6 +1,11 @@
 <?php
 
-Core::uses('AppModel', 'model');
+namespace App\model\testes;
+
+use Djck\Core;
+use App\model\AppModel;
+
+Core::uses('AppModel', 'App');
 
 class Arquivo extends AppModel {
   

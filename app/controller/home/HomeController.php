@@ -1,13 +1,19 @@
 <?php
 
-Core::uses('AppController', 'controller');
-Core::uses('AppView', 'view');
+namespace App\controller\home;
 
-Core::import('Minify_Loader', 'plugin/min/lib/Minify/Loader.php'); // nome do arquivo não bate com nome da classe
+use Djck\Core;
+use App\controller\AppController;
+use App\model\AppModel;
+use App\view\AppView;
+use Djck\upload\Uploader;
 
-Core::uses('Uploader', 'core/upload');
+Core::uses('AppController', 'App');
+Core::uses('AppModel', 'App');
+Core::uses('AppView', 'App');
 
-Core::uses('AppModel', 'model');
+Core::uses('Uploader', 'Djck\upload');
+
 
 class AAA extends AppModel {
   
@@ -85,10 +91,9 @@ class HomeController extends AppController {
       echo $f.'<br>';
     }
     echo '</pre>';*/
-    echo 'kfpsdof';
-    return;
     
-    Core::uses('Arquivo', 'model/testes');
+    //FIXME
+    //Core::uses('Arquivo', 'model/testes');
     
     $arq = new Arquivo();
     $arq->select();
@@ -122,7 +127,8 @@ class HomeController extends AppController {
   
   function process_upload() {
     
-    Core::uses('Arquivo', 'model/testes');
+    // FIXME
+    //Core::uses('Arquivo', 'model/testes');
     
     //sleep(1);
     $arquivo = new Arquivo();

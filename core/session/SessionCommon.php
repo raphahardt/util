@@ -1,10 +1,14 @@
 <?php
 
-Core::depends('Cookie');
+namespace Djck\session;
+
+use Djck\Core;
+use Djck\CoreException;
+use Djck\cookie\Cookie;
 
 class SessionException extends CoreException {}
 
-abstract class SessionCommon implements ArrayAccess, Countable {
+abstract class SessionCommon implements \ArrayAccess, \Countable {
   
   private $reserved_names = array(
       SESSION_USER_NAME => 1, SESSION_TOKEN_NAME => 1, 'id' => 1, 'logged' => 1
