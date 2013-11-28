@@ -1,6 +1,7 @@
 <?php
 
 use Djck\Core;
+use Djck\parser\Parser;
 
 /*
  * To change this template, choose Tools | Templates
@@ -41,7 +42,7 @@ if (!function_exists('enum')) {
 if (!function_exists('sdir_rtrim')) {
   
   function sdir_rtrim($dir) {
-    return rtrim($dir, "\n\r\t\s/\\");
+    return rtrim($dir, " /\\");
   }
 
 }
@@ -66,10 +67,14 @@ if (!function_exists('cfg')) {
   function cfg($file) {
     // TODO algo de forçar fazer load do parser, ou deixar assim...
     //Core::depends('parser\Parser');
+    if (!class_exists('Parser', false)) {
+      include_once CORE_PATH . DS .'parser'.DS.'Parser.php';
+      //TODO melhorar isso para deixar mais "sistemico"
+    }
     
     // a funcao irá retornar a config "mergida" do core e do app, automaticamente
     // sempre as config de app sobrescrevem/adicionam as de core
-    $file_ = DS.'cfg'.DS.$file. Djck\parser\Parser::$extension;
+    $file_ = DS.'cfg'.DS.$file. Parser::$extension;
     
     // nenhuma cfg foi encontrada
     $exists_core = is_file(DJCK.$file_);
@@ -78,8 +83,8 @@ if (!function_exists('cfg')) {
       throw new Djck\CoreException('Config "'.$file.'" não encontrada');
     }
     
-    $cfg_core = $exists_core ? Djck\parser\Parser::decode(file_get_contents(DJCK.$file_))     : null;
-    $cfg_app  = $exists_app  ? Djck\parser\Parser::decode(file_get_contents(APP_PATH.$file_)) : null;
+    $cfg_core = $exists_core ? Parser::decode(file_get_contents(DJCK.$file_))     : null;
+    $cfg_app  = $exists_app  ? Parser::decode(file_get_contents(APP_PATH.$file_)) : null;
     
     $cfg = array_merge_recursive((array)$cfg_core, (array)$cfg_app);
     array_walk_recursive($cfg, '_iterator_normalize_cfg');
@@ -95,11 +100,11 @@ if (!function_exists('cfg')) {
    * @return string
    */
   function _iterator_normalize_cfg(&$config, $key) {
-    if (preg_match('/\$([A-Z_]+)/', $config, $match)) {
+    if (preg_match('/\%([A-Z_]+)\%/', $config, $match)) {
       $config = str_replace($match[0], constant($match[1]), $config);
     }
     if (strpos($config, '\\') !== false) {
-      $config = str_replace('\\', DS, $config);
+      $config = sdir($config, DS, false);
     }
   }
   

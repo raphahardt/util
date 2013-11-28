@@ -54,6 +54,38 @@ abstract class Core {
       'root' =>       array('root' => true),
   );
   
+  // transforma um namespace em pasta
+  private static function _namespaceToFolder($namespace) {
+    // configuração: mapeamentos para namespaces ambíguos
+    $cfg = cfg('Maps');
+    
+    $parts_namespace = explode('\\', $namespace);
+    foreach ($parts_namespace as &$block_namespace) {
+      list($block, $subname) = explode(':', $block_namespace, 2);
+      if ($cfg[ $block ]) {
+        // se for array de um elemento só, usar proprio
+        if (is_array($cfg[ $block ]) && count($cfg[ $block ]) == 1) {
+          $cfg[ $block ] = reset($cfg[ $block ]);
+        }
+        if (is_array($cfg[ $block ])) {
+          if (!$subname) {
+            throw new CoreException('Path de namespace "'.$block.'" não mapeado '
+                    . '(este package usa '.count($cfg[ $block ]).' subpackages.'
+                    . ' Use namespace\\package:subpackage para selecionar');
+          }
+          $cfg[ $block ] = $cfg[ $block ][$subname];
+        }
+        $block_namespace = $cfg[ $block ];
+      } else {
+        // tirar :subname sempre, mesmo q nao tenha
+        $block_namespace = $block;
+      }
+    }
+    unset($block_namespace);
+    $abs_path = implode(DS, $parts_namespace);
+    return sdir_rtrim($abs_path);
+  }
+  
   // registra a classe que vc vai usar no contexto para ser carregada pelo autoload
   final static function uses($class, $path, $force = false) {
     // pega pasta correta
@@ -79,14 +111,26 @@ abstract class Core {
     ++self::$calls;
   }
   
+  final static function importPackage($package) {
+    // pega pasta correta
+    $parsed = self::path($package);
+    dump($parsed);
+    
+    foreach (glob($parsed.DS.'*.php') as $file) {
+      // pega o nome da classe
+      $class = str_replace(array('.class.php','.php'), '', basename($file));
+      dump($class);
+      dump($package);
+      Core::import($class, $package);
+    }
+  }
+  
   // retorna o caminho correto
   final static function path($path) {
     
     // procurando classe por namespace
     if (strpos($path, '/') !== 0) {
-      $abs_path = str_replace('Djck', CORE_PATH, $path);
-      $abs_path = str_replace('App', APP_PATH, $abs_path);
-      return str_replace('\\', DS, $abs_path);
+      return self::_namespaceToFolder($path);
     } else {
       $path = substr($path, 1);
     }
@@ -155,19 +199,6 @@ abstract class Core {
     
     // checa se o arquivo já foi carregado e se vai força-lo a sobrecarrega-lo
     if (!isset(self::$imported[$alias]) || $force) {
-      
-      // verifica includes
-      /*if (isset(self::$types[$type]['includes'])) {
-        if (is_array(self::$types[$type]['includes'])) {
-          foreach (self::$types[$type]['includes'] as $include) {
-            if (!in_array($arq, self::$types[$type]['includes'])) {
-              self::import($path_parts.$include, $type, false, false);
-            }
-          }
-        } elseif ($path_parts.self::$types[$type]['includes'] !== $file) {
-          self::import($path_parts.self::$types[$type]['includes'], $type, false, false);
-        }
-      }*/
 
       // verifica se o arquivo existe
       if (is_file($parsed)) {
@@ -205,6 +236,12 @@ abstract class Core {
   }
   
   // verifica se a classe já foi carregada, se não, lançar uma exception
+  /**
+   * 
+   * @deprecated
+   * @param type $class
+   * @throws CoreException
+   */
   final static function depends($class) {
     ++self::$calls;
     

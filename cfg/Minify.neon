@@ -6,7 +6,7 @@ debug: no
 errorLogger: no           # deixar no (false) aumenta um pouco a performance no minify 
                            # deixar yes para usar o FirePHP
 
-cachePath: $TEMP_PATH\min  # se usar barras unix (/), elas não serão convertidas, 
+cachePath: %TEMP_PATH%\min  # se usar barras unix (/), elas não serão convertidas, 
                             # se usar win (\), elas serão convertidas para DS
 cacheFileLocking: yes      # no (false) para sistemas NFS (muito lento se yes)
 uploaderHoursBehind: 0     # diferença de horas entre servidor ftp e computador local

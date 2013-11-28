@@ -4,5 +4,11 @@ namespace Djck;
 
 require 'core/bootstrap.php';
 
-$Dispatcher = new Dispatcher();
-$Dispatcher->dispatch($Router, $Q);
+dump(cfg('Maps'));
+
+Core::importPackage('Djck\mvc:model\behaviors');
+
+Core::dump();
+
+//$Dispatcher = new Dispatcher();
+//$Dispatcher->dispatch($Router, $Q);

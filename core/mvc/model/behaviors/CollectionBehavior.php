@@ -5,7 +5,7 @@ namespace Djck\mvc\behaviors;
 use Djck\Core;
 use Djck\mvc\Model;
 
-Core::uses('SingleBehavior', 'Djck\mvc\behaviors');
+Core::uses('SingleBehavior', 'Djck\mvc:model\behaviors');
 
 /**
  * Description of CollectionBehavior

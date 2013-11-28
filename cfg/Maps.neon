@@ -1,0 +1,8 @@
+Djck: %CORE_PATH%
+
+mvc:
+  model: mvc\model
+  controller: mvc\controller
+  view: mvc\view
+
+system: core

@@ -3,6 +3,7 @@
 namespace Djck\mvc;
 
 use Djck\Core;
+use Djck\system\AbstractSingleton;
 
 /*
  * To change this template, choose Tools | Templates
