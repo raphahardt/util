@@ -2,11 +2,10 @@
 
 namespace Djck;
 
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+/**
+ * Define algumas constantes caso elas ainda não tenham sido definidas
+ * @deprecated 28/11/13 elas são todas definidas do defs.php
  */
-
 if (!defined('CORE_PATH'))
   define('CORE_PATH', DJCK.DS.'core');
 
@@ -16,22 +15,69 @@ if (!defined('APP_PATH'))
 if (!defined('PLUGIN_PATH'))
   define('PLUGIN_PATH', DJCK.DS.'plugins');
 
+/**
+ * Exceções lançadas da Core
+ */
 class CoreException extends \Exception {}
 
 /**
- * Description of Core
- *
- * @author Rapha e Dani
+ * Classe principal do sistema.
+ * 
+ * A classe Core é responsável por carregar as outras classes do sistema e também
+ * por definir os handlers de erros e exceptions.
+ * 
+ * Exemplos de uso
+ * ---------------
+ * <code>
+ * Core::setup();    // inicia core
+ * 
+ * Core::import('Classe1', 'namespace\para');   // importa \namespace\para\Classe1
+ * Core::uses('Classe2', '/core/pasta');        // registra \Classe2
+ * 
+ * // registra todas as classes da pasta DJCK/namespace/pastaMapeada/subpasta
+ * Core::registerPackage('namespace\package:pasta1\subpasta');
+ * </code>
+ * 
+ * Exemplos de mapeamento de namespaces (Maps)
+ * -------------------------------------------
+ * <code>
+ * // arquivo Maps.neon
+ * namespace: %CORE_DIR%         # sempre redireciona \namespace\ para pasta definida do core
+ * 
+ * package:
+ *   pasta1: pastaMapeada        # mapeia \package:pasta1\ para pastaMapeada\
+ *   pasta2: pasta\com\subpasta  # mapeia \package:pasta2\ para pasta\com\subpasta\
+ * 
+ * outro: outraPasta             # mapeia \outro\ para outraPasta\
+ * </code>
+ * 
+ * Para outros detalhes, veja Core::path()
+ * 
+ * @abstract
+ * @author Raphael Hardt
+ * @version 1.0
  */
 abstract class Core {
   
-  // classes importadas do core
+  /**
+   * Classes importadas.
+   * 
+   * @var array 
+   */
   private static $imported = array();
   
-  // classes registradas para serem carregadas pelo autoload do core
+  /**
+   * Classes registradas para ser importadas por autoload.
+   * 
+   * @var array
+   */
   private static $classes = array();
   
-  // numero de chamadas de funcao do core
+  /**
+   * Número de vezes que um import() ou uses() foi chamado.
+   * 
+   * @var int 
+   */
   private static $calls = 0;
 
   /**
@@ -42,6 +88,7 @@ abstract class Core {
    *          com a opção core acima
    *  - root: TRUE para buscar da raiz do projeto, FALSE para buscar relativo ao core/ ou app/
    *  - plugins: TRUE para buscar da pasta dos plugins, FALSE para buscar relativo ao core/ ou app/
+   * @deprecated 28/11/13 Use namespaces para carregar classes
    * @var type tipo do arquivo que sera carregado
    */
   public static $types = array(
@@ -55,11 +102,12 @@ abstract class Core {
   );
   
   // transforma um namespace em pasta
-  private static function _namespaceToFolder($namespace) {
+  private static function _namespaceToFolder(&$namespace) {
     // configuração: mapeamentos para namespaces ambíguos
     $cfg = cfg('Maps');
     
     $parts_namespace = explode('\\', $namespace);
+    $final_namespace = array();
     foreach ($parts_namespace as &$block_namespace) {
       list($block, $subname) = explode(':', $block_namespace, 2);
       if ($cfg[ $block ]) {
@@ -80,13 +128,85 @@ abstract class Core {
         // tirar :subname sempre, mesmo q nao tenha
         $block_namespace = $block;
       }
+      // para o namespace normalizado
+      $final_namespace[] = $block;
     }
     unset($block_namespace);
-    $abs_path = implode(DS, $parts_namespace);
+    // seta o namespace de volta, que está por referencia, para ter o novo nome
+    // de namespace normalizado (sem os subpackages :subpckg)
+    $namespace = implode('\\', $final_namespace);
+    
+    $abs_path = DJCK . DS . implode(DS, $parts_namespace);
     return sdir_rtrim($abs_path);
   }
   
-  // registra a classe que vc vai usar no contexto para ser carregada pelo autoload
+  /**
+   * Importa uma classe no sistema.
+   * 
+   * Este método faz um include no arquivo da classe.
+   * Use import() apenas se a ordem da importação das classes é importante pro funcionamento
+   * do sistema. Para casos onde a ordem não importa, use uses() ou register()
+   * 
+   * Exemplo de uso
+   * --------------
+   * <code>
+   * Core::import('Classe', 'namespace\da\classe');
+   * </code>
+   * 
+   * O namespace deve corresponder à pasta onde ela está localizada a partir da pasta
+   * root do sistema (DJCK). Caso um namespace não corresponda, ele deve ser mapeado
+   * no arquivo de configuração "Maps"
+   * 
+   * @see Core::path()
+   * @param string $file Nome da classe que será importada (sem o namespace)
+   * @param string $path Namespace da classe. Se começar com /, será procurado por pasta
+   * @param boolean $force Força a classe ser carregada novamente mesmo que tenha sido falha
+   * @return boolean Se foi carregada ou não
+   */
+  final static function import($file, $path, $force = false) {
+    $success = false;
+    
+    $alias = '';
+    $parsed = self::_parseFile($file, $path, $alias);
+    
+    // checa se o arquivo já foi carregado e se vai força-lo a sobrecarrega-lo
+    if (!isset(self::$imported[$alias]) || $force) {
+
+      // verifica se o arquivo existe
+      if (is_file($parsed)) {
+        $success = (bool) include_once $parsed;
+      }
+
+      // registra qual o status da classe.
+      self::$imported[$alias] = $success;
+      
+    }
+    ++self::$calls;
+    return self::$imported[$alias];
+  }
+  
+  /**
+   * Registra uma classe no sistema.
+   * 
+   * Este método registra a classe num buffer e importa no sistema apenas quando for necessária.
+   * Não use este método para classes essenciais do sistema, para isso use import().
+   * As classes registradas serão invocadas automaticamente pelo __autoload (load()).
+   * 
+   * Exemplo de uso
+   * --------------
+   * <code>
+   * Core::uses('Classe', 'namespace\da\classe');
+   * </code>
+   * 
+   * O namespace deve corresponder à pasta onde ela está localizada a partir da pasta
+   * root do sistema (DJCK). Caso um namespace não corresponda, ele deve ser mapeado
+   * no arquivo de configuração "Maps"
+   * 
+   * @see Core::path()
+   * @param string $class Nome da classe que será importada (sem o namespace)
+   * @param string $path Namespace da classe. Se começar com /, será procurado por pasta
+   * @param boolean $force Força a classe ser carregada novamente mesmo que tenha sido falha
+   */
   final static function uses($class, $path, $force = false) {
     // pega pasta correta
     $parsed = self::_parseFile($class, $path);
@@ -111,31 +231,107 @@ abstract class Core {
     ++self::$calls;
   }
   
+  /**
+   * Alias para Core::uses()
+   * 
+   * @see Core::path()
+   * @see \Djck\Core::uses()
+   * @param string $class
+   * @param string $path
+   * @param boolean $force
+   */
+  final static function register($class, $path, $force = false) {
+    self::uses($class, $path, $force);
+  }
+  
+  /**
+   * Importa todas as classes de um namespace.
+   * 
+   * @see Core::path()
+   * @param string $package
+   */
   final static function importPackage($package) {
     // pega pasta correta
+    $original_package = $package; // tenho que guardar a pasta correta pois $package será alterado por referencia
     $parsed = self::path($package);
-    dump($parsed);
     
     foreach (glob($parsed.DS.'*.php') as $file) {
       // pega o nome da classe
       $class = str_replace(array('.class.php','.php'), '', basename($file));
-      dump($class);
-      dump($package);
-      Core::import($class, $package);
+      Core::import($class, $original_package);
     }
   }
   
-  // retorna o caminho correto
-  final static function path($path) {
+  /**
+   * Registra todas as classes de um namespace.
+   * 
+   * @see Core::path()
+   * @param string $package
+   */
+  final static function usesPackage($package) {
+    // pega pasta correta
+    $original_package = $package; // tenho que guardar a pasta correta pois $package será alterado por referencia
+    $parsed = self::path($package);
+    
+    foreach (glob($parsed.DS.'*.php') as $file) {
+      // pega o nome da classe
+      $class = str_replace(array('.class.php','.php'), '', basename($file));
+      Core::uses($class, $original_package);
+    }
+  }
+  
+  /**
+   * Alias para Core::usesPackage()
+   * 
+   * @see Core::path()
+   * @see Core::usesPackage()
+   * @param string $package
+   */
+  final static function registerPackage($package) {
+    self::usesPackage($package);
+  }
+  
+  /**
+   * Converte um pseudo-caminho ou namespace para sua pasta física correspondente.
+   * 
+   * Para pseudo-caminhos (deprecated)
+   * --------------------
+   * core: alias para CORE_PATH
+   * model: alias para APP_PATH/model
+   * controller: alias para APP_PATH/controller
+   * view: alias para APP_PATH/view
+   * plugin: alias para PLUGIN_PATH
+   * file/root: alias para DJCK
+   * 
+   * Para os pseudo-caminhos funcionarem, eles devem iniciar com / (barra)
+   * 
+   * Para namespaces
+   * ---------------
+   * nome\do\namespace: 
+   *   Vai procurar pelo \nome\do\namespace na pasta DJCK/nome/do/namespace/
+   * outro\namespace:opcao\ambiguo: 
+   *   Vai procurar pelo \outro\namespace\ambiguo na pasta DJCK/outro/namespace_mapeado/ambiguo/
+   * 
+   * Há vezes que um mesmo namespace pode apontar para pastas diferentes.
+   * Para resolver isso, use o arq de config "Maps" e aponte o namespace que tenha
+   * mais de uma pasta. Deve ser um array associativo, onde ['namespace' => ['opcao1' => 'pasta1/subpasta']] seja
+   * acessado via \abc\namespace:opcao1\, que será alterado para DJCK/abc/pasta1/subpasta/
+   * Não necessariamente precisa ser um array de ambiguidades, pode ser um simples mapeamento
+   * para outra pasta, num string mesmo (ex: ['namespace' => 'outra/pasta']).
+   * 
+   * @param string $path Namespace ou pseudo-caminho (deprecated) que será mapeado para sua pasta correspondente.
+   * @return string Caminho absoluto do namespace
+   */
+  final static function path(&$path) {
     
     // procurando classe por namespace
     if (strpos($path, '/') !== 0) {
       return self::_namespaceToFolder($path);
     } else {
-      $path = substr($path, 1);
+      $path_ = substr($path, 1);
     }
     
-    $parts = explode('/', $path);
+    $parts = explode('/', $path_);
     $type = array_shift($parts);
     
     // pega o path do tipo e acrescenta no inicio do caminho do arquivo
@@ -161,7 +357,21 @@ abstract class Core {
     return $abs_path;
   }
   
-  static private function _parseFile($file, $path, &$alias = '') {
+  /**
+   * Método auxiliar para acertar o caminho de um arquivo.
+   * 
+   * Retorna o caminho absoluto do arquivo a ser importado/registrado.
+   * O nome do arquivo é sempre o nome da classe
+   * Se o caminho terminar com .php, o nome do arquivo do $path será usado
+   * 
+   * @private
+   * @param string $file Nome da classe (arquivo)
+   * @param string $path Namespace ou pseudo-caminho de onde a classe está
+   * @param string $alias Alias de localização do arquivo fisicamente, usada para registrar
+   *                      no import() (interno)
+   * @return string Caminho absoluto
+   */
+  static private function _parseFile($file, &$path, &$alias = '') {
     
     // pega o caminho
     $abs_path = self::path($path);
@@ -191,29 +401,12 @@ abstract class Core {
     return $abs_path;
   }
   
-  final static function import($file, $path, $force = false) {
-    $success = false;
-    
-    $alias = '';
-    $parsed = self::_parseFile($file, $path, $alias);
-    
-    // checa se o arquivo já foi carregado e se vai força-lo a sobrecarrega-lo
-    if (!isset(self::$imported[$alias]) || $force) {
-
-      // verifica se o arquivo existe
-      if (is_file($parsed)) {
-        $success = (bool) include_once $parsed;
-      }
-
-      // registra qual o status da classe.
-      self::$imported[$alias] = $success;
-      
-    }
-    ++self::$calls;
-    return self::$imported[$alias];
-  }
-  
-  // carrega uma classe
+  /**
+   * Método chamado pelo autoload para carregar as classes registradas.
+   * 
+   * @param string $class Nome da classe a ser carregada (com namespace)
+   * @return boolean
+   */
   final public static function load($class) {
     // Sanitize class name.
     $class = strtolower($class);
@@ -235,11 +428,14 @@ abstract class Core {
     return false;
   }
   
-  // verifica se a classe já foi carregada, se não, lançar uma exception
   /**
+   * Faz com que o arquivo (ou partes dele) tenha dependencia com certa classe.
    * 
-   * @deprecated
-   * @param type $class
+   * Ele verifica se a classe já foi carregada, senão, lança uma Exception e evita
+   * o sistema de continuar.
+   * 
+   * @deprecated 28/11/13 Não é necessário mais forçar uma importação com esse método
+   * @param string $class Nome da classe que o arquivo depende (com namespace)
    * @throws CoreException
    */
   final static function depends($class) {
@@ -253,11 +449,19 @@ abstract class Core {
     }
   }
   
-  // alias para ::uses
-  final static function register($class, $path, $force = false) {
-    self::uses($class, $path, $force);
-  }
-  
+  /**
+   * Manipulador de erros do sistema.
+   * 
+   * Captura os erros comuns (trigger_error) e lança uma ErrorException no lugar.
+   * Basicamente ela deixa o sistema mais orientado a objetos.
+   * 
+   * @param int $errno
+   * @param string $errstr
+   * @param string $errfile
+   * @param int $errline
+   * @return boolean
+   * @throws \ErrorException
+   */
   final static function error_handler($errno, $errstr, $errfile, $errline) {
     // não mostra erros para quando for usado o @ nas expressões
     // ver: http://www.php.net/manual/en/language.operators.errorcontrol.php
@@ -286,7 +490,17 @@ abstract class Core {
     }
   }
   
-  // hack para conseguir pegar erros fatais no php
+  /**
+   * Manipulador de erros fatais do sistema.
+   * 
+   * O PHP, por padrão, não permite que você recupere de Fatal Errors e nem capture
+   * estes erros com handlers normais. Este método, que é registrado no fim do script
+   * (register_shutdown_function) faz com que um último possível erro seja capturado
+   * e seja lançado uma Exception pelo handler de erros normal.
+   * 
+   * @see http://stackoverflow.com/questions/277224/how-do-i-catch-a-php-fatal-error
+   * @return void
+   */
   final static function fatal_error_handler() {
     $error = error_get_last();
 
@@ -297,7 +511,8 @@ abstract class Core {
       $errstr  = $error["message"];
       
       // limpa qualquer buffer que tenha sido criado
-      ob_end_clean();
+      if (!_DEV) // para nao apagar tudo quando tiver em modo DEV
+        ob_end_clean();
       
       // manda o erro como exception e captura depois com o handler padrao
       try {
@@ -308,7 +523,18 @@ abstract class Core {
     }
   }
   
-  final static function exception_handler($exception) {
+  /**
+   * Manipulador de Exceptions não-capturadas.
+   * 
+   * Se algum erro lançar uma Exception e ela não for capturada, esta função é
+   * executada e uma página "amigável" é mostrada com o Exception lançado.
+   * 
+   * Porém ela pode ser usada para enviar um e-mail pro programador, por exemplo.
+   * 
+   * @todo mandar email pro webmaster
+   * @param \Exception $exception
+   */
+  final static function exception_handler(\Exception $exception) {
     // manda header de erro 500 (erro interno de servidor)
     if (!headers_sent()) {
       $html = true;
@@ -323,9 +549,11 @@ abstract class Core {
       echo '<body>';
     }
     echo '<div style="margin:30px auto;border:1px solid #ccc;background:#eee;padding:15px;width:400px">';
-    echo '<span style="color:red">Erro não capturado:</span> ' , $exception->getMessage(), 
+    echo '<span style="color:red">Erro não capturado ('.get_class($exception).'):</span> ' , 
+              $exception->getMessage(), 
             ' <div style="color:#999"> linha ', $exception->getLine(), 
             ' - ', str_replace(DJCK, '', $exception->getFile()),
+            '<pre><code>', $exception->getTraceAsString(), '</code></pre>',
             '</div>',
             "\n";
     echo '</div>';
@@ -337,6 +565,51 @@ abstract class Core {
     //mail('sistema13@furacao.com.br', 'teste erro', $exception->getMessage());
   }
   
+  /**
+   * Manipulador de output buffer.
+   * 
+   * Com este método é possível capturar erros fatais também, bem como mandar o
+   * output compactado com gzip, por exemplo.
+   * 
+   * @todo gzip
+   * @param string $buffer Buffer atual
+   * @return string Buffer a ser mostrado no browser
+   */
+  final static function outputbuffer_handler($buffer) {
+    // TODO fazer depois
+    /*$error = error_get_last();
+
+    if( $error !== NULL) {
+      $errno   = $error["type"];
+      $errfile = $error["file"];
+      $errline = $error["line"];
+      $errstr  = $error["message"];
+      
+      // manda o erro como exception e captura depois com o handler padrao
+      try {
+        self::error_handler($errno, $errstr, $errfile, $errline);
+      } catch (\Exception $exception) {
+        $buffer .= ''
+                . '<div style="margin:15px auto;border:1px solid #ccc;background:#eee;padding:15px;width:400px">'
+                  . '<span style="color:red">Erro não capturado ('.get_class($exception).'):</span> '
+                    . $exception->getMessage()
+                  . ' <div style="color:#999"> linha '. $exception->getLine()
+                  . ' - '. str_replace(DJCK, '', $exception->getFile())
+                  . '</div>'
+                . '</div>';
+      }
+    }*/
+    
+    return $buffer;
+  }
+  
+  /**
+   * Inicializador da Core.
+   * 
+   * Deve ser chamado assim que importada.
+   * 
+   * @return void
+   */
   final static function setup() {
     // define auto loader
     spl_autoload_register(array(__CLASS__, 'load'));

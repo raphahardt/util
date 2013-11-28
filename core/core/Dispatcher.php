@@ -35,7 +35,8 @@ class Dispatcher {
     if (ob_get_level() > 0)
       ob_end_clean(); // limpa qualquer coisa que vier de outro redirecionamento
     
-    ob_start(defined('OUTPUT_ZLIB') ? 'ob_gzhandler' : null); // inicia um novo controle de buffer
+    //ob_start(defined('OUTPUT_ZLIB') ? 'ob_gzhandler' : null); // inicia um novo controle de buffer
+    ob_start(array('\Djck\Core', 'outputbuffer_handler')); // inicia um novo controle de buffer
     
     // verifica se a classe existe
     if (class_exists($class_name)) {

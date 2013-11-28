@@ -12,8 +12,8 @@ use Djck\system\AbstractSingleton;
 
 // registra os behaviors principais
 $package = '/core/mvc/model/behaviors';
-Core::register('SingleBehavior', $package);
-Core::register('CollectionBehavior', $package);
+//Core::register('SingleBehavior', $package);
+//Core::register('CollectionBehavior', $package);
 
 /**
  * Description of Behavior

@@ -1,4 +1,4 @@
-Djck: %CORE_PATH%
+Djck: %CORE_DIR%
 
 mvc:
   model: mvc\model
