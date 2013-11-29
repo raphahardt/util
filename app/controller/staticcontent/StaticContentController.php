@@ -1,11 +1,11 @@
 <?php
 
-namespace App\controller\_static;
+namespace App\controller\staticcontent;
 
 use Djck\Core;
-use App\contoller\AppController;
+use App\controller\AppController;
 
-Core::uses('AppController', 'App');
+Core::uses('AppController', 'App\controller');
 
 class Resource {
   
@@ -194,9 +194,9 @@ class ImageResource extends Resource {
  */
 class StaticContentController extends AppController {
   
-  function index() {
+  function executeIndex() {
     // processa o parametro
-    $file = $this->request->params['file'];
+    $file = $this->Request->params['file'];
     
     $parts_file = explode('/', $file);
     // detecta se o primeiro pedaço do nome do arquivo é um "sizes" (999x999)
@@ -228,50 +228,16 @@ class StaticContentController extends AppController {
     
     // verifica cache e outputa o arquivo
     if ($new_file !== false) {
-      $this->response->cache($im->getLastModifiedTime(), "+1 month");
-      $this->response->type('png');
-      $modified = $this->response->checkNotModified($this->request);
+      $this->Response->cache($im->getLastModifiedTime(), "+1 month");
+      $this->Response->type('png');
+      $modified = $this->Response->checkNotModified($this->Request);
 
       if (!$modified) {
         $im->output();
       }
     } else {
       // imagem nao criada ou nao encontrada
-      $this->response->statusCode(404);
-    }
-  }
-  
-  
-  function imagem() {
-    
-    /*if ($this->request->referer() != SITE_FULL_URL.'/') {
-      //$this->response->statusCode(404);
-      // Create a 100*30 image
-      $im = imagecreate(500, 30);
-
-      // White background and blue text
-      $bg = imagecolorallocate($im, 255, 255, 255);
-      $textcolor = imagecolorallocate($im, 0, 0, 255);
-
-      // Write the string at the top left
-      imagestring($im, 3, 0, 0, $this->request->referer(), $textcolor);
-      imagestring($im, 3, 0, 10, SITE_FULL_URL.'/', $textcolor);
-
-      // Output the image
-      $this->response->type('png');
-
-      imagepng($im);
-      imagedestroy($im);
-      //echo 'erro';
-      return;
-    }*/
-    
-    $this->response->cache(mktime(0,0,0, 6, 8, 2013), '+1 day');
-    $this->response->type('jpg');
-    $modified = $this->response->checkNotModified($this->request);
-    
-    if (!$modified) {
-      readfile(DJCK.DS.'123.jpg');
+      $this->Response->statusCode(404);
     }
   }
   

@@ -5,20 +5,13 @@ namespace Djck\mvc;
 use Djck\Core;
 use Djck\system\AbstractSingleton;
 
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
-
 // registra os behaviors principais
-$package = '/core/mvc/model/behaviors';
-//Core::register('SingleBehavior', $package);
-//Core::register('CollectionBehavior', $package);
+Core::registerPackage('Djck\mvc:model\behaviors');
 
 /**
  * Description of Behavior
  *
- * @author usuario
+ * @author Raphael Hardt <sistema13@furacao.com.br>
  */
 abstract class Behavior {
   

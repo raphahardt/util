@@ -986,14 +986,14 @@ class Response {
    * @return DateTime
    */
   protected function _getUTCDate($time = null) {
-    if ($time instanceof DateTime) {
+    if ($time instanceof \DateTime) {
       $result = clone $time;
     } elseif (is_integer($time)) {
-      $result = new DateTime(date('Y-m-d H:i:s', $time));
+      $result = new \DateTime(date('Y-m-d H:i:s', $time));
     } else {
-      $result = new DateTime($time);
+      $result = new \DateTime($time);
     }
-    $result->setTimeZone(new DateTimeZone('UTC'));
+    $result->setTimeZone(new \DateTimeZone('UTC'));
     return $result;
   }
 

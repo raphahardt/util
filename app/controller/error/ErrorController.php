@@ -5,7 +5,7 @@ namespace App\controller\error;
 use Djck\Core;
 use App\controller\AppController;
 
-Core::uses('AppController', 'App');
+Core::uses('AppController', 'App\controller');
 
 /**
  * Description of HomeController
@@ -14,7 +14,7 @@ Core::uses('AppController', 'App');
  */
 class ErrorController extends AppController {
   
-  function index() {
+  function executeIndex() {
     echo '<h1>404 Not Found, little padawan</h1>';
   }
   

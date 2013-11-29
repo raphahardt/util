@@ -1,4 +1,5 @@
 Djck: %CORE_DIR%
+App: %APP_DIR%
 
 mvc:
   model: mvc\model

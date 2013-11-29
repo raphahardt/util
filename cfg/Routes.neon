@@ -50,10 +50,12 @@ routes:
   # ? - deixa parametro opcional
 
 controllers:
+
+  baseNamespace: App
   
   # key: nome do controller
   # value: caminho do controller, inicando com barra (/)
   HomeController: /home
   ErrorController: /error
-  StaticContentController: /static
+  StaticContentController: /staticcontent
   MinifyController: /minify

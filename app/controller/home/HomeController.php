@@ -8,9 +8,9 @@ use App\model\AppModel;
 use App\view\AppView;
 use Djck\upload\Uploader;
 
-Core::uses('AppController', 'App');
-Core::uses('AppModel', 'App');
-Core::uses('AppView', 'App');
+Core::uses('AppController', 'App\controller');
+Core::uses('AppModel', 'App\model');
+Core::uses('AppView', 'App\view');
 
 Core::uses('Uploader', 'Djck\upload');
 
@@ -54,9 +54,9 @@ class AAA extends AppModel {
  */
 class HomeController extends AppController {
   
-  function teste() {
+  function executeTeste() {
     
-    $s = $this->request->query['s'];
+    $s = $this->Request->query['s'];
     $data = array();
     
     $a = new AAA();
@@ -78,11 +78,11 @@ class HomeController extends AppController {
       }
     }
     
-    $this->response->type('json');
+    $this->Response->type('json');
     echo json($data);
   }
   
-  function index(AppView $View) {
+  function executeIndex(AppView $View) {
     
     /*$this->session['sess'.uniqid()] = uniqid();
     Core::dump();
@@ -95,8 +95,8 @@ class HomeController extends AppController {
     //FIXME
     //Core::uses('Arquivo', 'model/testes');
     
-    $arq = new Arquivo();
-    $arq->select();
+    //$arq = new Arquivo();
+    //$arq->select();
     
     //Core::dump();
     
@@ -125,7 +125,7 @@ class HomeController extends AppController {
     echo '</pre>';*/
   }
   
-  function process_upload() {
+  function executeProcess_upload() {
     
     // FIXME
     //Core::uses('Arquivo', 'model/testes');
@@ -133,19 +133,19 @@ class HomeController extends AppController {
     //sleep(1);
     $arquivo = new Arquivo();
     
-    if ($ordfiles = $this->request->data['ordem_file']) {
+    if ($ordfiles = $this->Request->data['ordem_file']) {
       $ret_array = array();
       foreach ($ordfiles as $i => $ordfile) {
         if ($arquivo->find($ordfile) !== false) {
           $arquivo->select();
 
-          $arquivo['ord'] = (int)$this->request->data['ordem'][$i];
+          $arquivo['ord'] = (int)$this->Request->data['ordem'][$i];
           $ret = $arquivo->update();
           $ret_array[] = array($ordfile => $ret);
         }
       }
       //file_put_contents(DJCK.DS.'config-'.$ordfile.'.txt', $this->request->data['ordem']);
-      $this->response->disableCache();
+      $this->Response->disableCache();
       echo json($ret_array);
       return;
     }
@@ -190,64 +190,15 @@ class HomeController extends AppController {
     
   }
   
-  function favicon() {
+  function executeFavicon() {
     $favicon = DJCK.DS.'favicon.ico';
     
-    $this->response->cache(filemtime($favicon), '+4 years');
-    $this->response->type('ico');
-    $modified = $this->response->checkNotModified($this->request);
+    $this->Response->cache(filemtime($favicon), '+4 years');
+    $this->Response->type('ico');
+    $modified = $this->Response->checkNotModified($this->Request);
     
     if (!$modified) {
       readfile($favicon);
-    }
-  }
-  
-  function add() {
-    //$this->response->cache(mktime(0,0,0, 6, 8, 2013), time()+5);
-    //$this->response->checkNotModified($this->request);
-    echo $this->request->referer().'<br>';
-    echo '<a href="../">home</a>';
-    echo env('HTTP_REFERER').'<br>';
-    echo '<img src="../imagem.jpg" />';
-    echo 'add22';
-  }
-  
-  function edit() {
-    echo 'edit #'.$this->request->params[':id'];
-    print_r($this->request->params);
-  }
-  
-  
-  function imagem() {
-    
-    if ($this->request->referer() != SITE_FULL_URL.'/') {
-      //$this->response->statusCode(404);
-      // Create a 100*30 image
-      $im = imagecreate(500, 30);
-
-      // White background and blue text
-      $bg = imagecolorallocate($im, 255, 255, 255);
-      $textcolor = imagecolorallocate($im, 0, 0, 255);
-
-      // Write the string at the top left
-      imagestring($im, 3, 0, 0, $this->request->referer(), $textcolor);
-      imagestring($im, 3, 0, 10, SITE_FULL_URL.'/', $textcolor);
-
-      // Output the image
-      $this->response->type('png');
-
-      imagepng($im);
-      imagedestroy($im);
-      //echo 'erro';
-      return;
-    }
-    
-    $this->response->cache(mktime(0,0,0, 6, 8, 2013), '+1 day');
-    $this->response->type('jpg');
-    $modified = $this->response->checkNotModified($this->request);
-    
-    if (!$modified) {
-      readfile(DJCK.DS.'123.jpg');
     }
   }
   

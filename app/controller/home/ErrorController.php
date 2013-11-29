@@ -5,7 +5,7 @@ namespace App\controller\home;
 use Djck\Core;
 use App\controller\AppController;
 
-Core::uses('AppController', 'App');
+Core::uses('AppController', 'App\controller');
 
 /**
  * Description of HomeController
@@ -14,8 +14,8 @@ Core::uses('AppController', 'App');
  */
 class ErrorController extends AppController {
   
-  function index() {
-    echo $this->request->referer();
+  function executeIndex() {
+    echo $this->Request->referer();
   }
   
 }

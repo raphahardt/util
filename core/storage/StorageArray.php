@@ -1,5 +1,7 @@
 <?php
 
+namespace Djck\storage;
+
 /**
  * Classe que faz cache persistente das informações de um objeto que precisa guardar
  * um numero muito grande de registros.
@@ -40,7 +42,7 @@
  * @author sistema13
  * @version 0.1 (27/11/2013)
  */
-class StorageArray extends ArrayIterator/* implements ArrayAccess, Countable, Iterator*/ {
+class StorageArray extends \ArrayIterator/* implements \ArrayAccess, \Countable, \Iterator*/ {
   
   /**
    * Dados do objeto
@@ -162,8 +164,9 @@ class StorageArray extends ArrayIterator/* implements ArrayAccess, Countable, It
     $path = dirname($this->path);
     if ($dh = opendir($path)) {
       while (($file = readdir($dh)) !== false) {
-        if (strpos($file, $this->objectName) !== false)
+        if (strpos($file, $this->objectName) !== false) {
           unlink($path . DS .$file);
+        }
       }
       closedir($dh);
     }
@@ -324,7 +327,7 @@ class StorageArray extends ArrayIterator/* implements ArrayAccess, Countable, It
     }
     // se chegar aqui, é porque a implementação de splice() para o caso é
     // pesado demais ou realmente não há solução prática
-    throw new BadMethodCallException('splice(): modo de uso não suportado');
+    throw new \BadMethodCallException('splice(): modo de uso não suportado');
   }
   
   /**
@@ -343,7 +346,7 @@ class StorageArray extends ArrayIterator/* implements ArrayAccess, Countable, It
   private function _normalizeOffset($offset, $inverse = false) {
     if (!is_numeric($offset)) {
       // não suporta keys não-numericos
-      throw new InvalidArgumentException('StorageArray não suporta key não-numericos ('.$offset.' experado int)');
+      throw new \InvalidArgumentException('StorageArray não suporta key não-numericos ('.$offset.' experado int)');
     }
     // real -> retorna o pretendido
     if ($inverse) {

@@ -4,20 +4,8 @@ namespace Djck\mvc;
 
 use Djck\Core;
 
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
-
 // registra os mappers principais
-$package = '/core/mvc/model/mappers';
-Core::register('DbcMapper', $package);
-Core::register('TempMapper', $package);
-Core::register('FileMapper', $package);
-//Core::register('FileBase64Mapper', $package);
-//Core::register('JsonMapper', $package);
-Core::register('XmlMapper', $package);
-Core::register('SessionMapper', $package);
+Core::registerPackage('Djck\mvc:model\mappers');
 
 // interfaces /////////////////////////////////////
 /**

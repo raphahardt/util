@@ -6,8 +6,8 @@ use Djck\Core;
 use App\controller\AppController;
 use App\view\AppView;
 
-Core::uses('AppController', 'App');
-Core::uses('AppView', 'App');
+Core::uses('AppController', 'App\controller');
+Core::uses('AppView', 'App\view');
 
 /**
  * Description of HomeController
@@ -16,12 +16,12 @@ Core::uses('AppView', 'App');
  */
 class LoginController extends AppController {
   
-  function index(AppView $view) {
+  function executeIndex(AppView $view) {
     //$view = new AppView('login/index.tpl');
     $view->render();
   }
   
-  function auth() {
+  function executeAuth() {
     $user = new stdClass();
     $user->id = 1;
     
@@ -31,13 +31,13 @@ class LoginController extends AppController {
     // segurança
     $this->session->interrupt();
     
-    $this->response->redirect('');
+    $this->Response->redirect('');
   }
   
-  function logout() {
+  function executeLogout() {
     session_destroy();
     //$this->session->destroy();
-    $this->response->redirect('');
+    $this->Response->redirect('');
   }
   
 }

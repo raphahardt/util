@@ -46,16 +46,16 @@ class Dispatcher {
       
       $class = new $class_name(); //TODO: tirar q e colocar url de um lugar melhor
 
-      $class->request->addParams($params);
-      if (isset($response_code)) $class->response->statusCode($response_code);
+      $class->Request->addParams($params);
+      if (isset($response_code)) $class->Response->statusCode($response_code);
       
       // alguns headers padrões
       if (defined('SITE_CHARSET')) {
-        $class->response->charset(SITE_CHARSET);
+        $class->Response->charset(SITE_CHARSET);
       }
       
       if (defined('SITE_OFFLINE') && SITE_OFFLINE === true) {
-        $class->response->header('X-Robots-Tag', 'noindex, nofollow');
+        $class->Response->header('X-Robots-Tag', 'noindex, nofollow');
       }
       
       // before
@@ -64,11 +64,17 @@ class Dispatcher {
         if (empty($action))
           $action = 'index';
         
+        // preprend execute (executeAction)
+        $action_original = $action;
+        $action = 'execute'.ucfirst($action);
+        
         if (!method_exists($class_name, $action)) {
           $this->route('error', null, 404);
           return;
         }
         
+        // pegar todos os métodos publicos para implementacao AOP (aspecto)
+        $rflc_methods = $rflc_class->getMethods(\ReflectionMethod::IS_PUBLIC);
         
         // reflexão do metodo e dos parametros dela
         $rflc_method = $rflc_class->getMethod($action);
@@ -89,7 +95,7 @@ class Dispatcher {
               $class_view = $rflc_param->getClass()->getName();
               //Core::depends($class_view); // TODO depender da classe chamada, ou deixar assim...
               
-              $view = new $class_view($class->viewPath."$action.tpl");
+              $view = new $class_view($class->viewPath."$action_original.tpl");
               
               $params_to_pass[] = $view;
               break;
@@ -115,8 +121,26 @@ class Dispatcher {
         }
         
         // chama o metodo       
+        
+        // AOP implement
+        $aop_action = ucfirst($action);
+        if (method_exists($class_name, "beforeExecuteAll")) {
+          $ctrl_response = $class->{"beforeExecuteAll"}($params_to_pass);
+        }
+        if (method_exists($class_name, "before$aop_action")) {
+          $ctrl_response = $class->execute("before$aop_action", $params_to_pass);
+        }
+        
         //$ctrl_response = call_user_func_array(array(&$class, $action), $params_to_pass);
         $ctrl_response = $class->execute($action, $params_to_pass);
+        
+        // AOP implement
+        if (method_exists($class_name, "after$aop_action")) {
+          $ctrl_response = $class->{"after$aop_action"}($ctrl_response);
+        }
+        if (method_exists($class_name, "afterExecuteAll")) {
+          $ctrl_response = $class->{"afterExecuteAll"}($ctrl_response);
+        }
         
         // after
         $class->afterExecute();
@@ -131,8 +155,8 @@ class Dispatcher {
       //ob_end_flush();
       
       // manda os headers definidos automaticamente
-      $class->response->body($contents);
-      $class->response->send();
+      $class->Response->body($contents);
+      $class->Response->send();
       
     } else {
       ob_end_flush();

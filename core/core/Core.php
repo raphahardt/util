@@ -101,7 +101,13 @@ abstract class Core {
       'root' =>       array('root' => true),
   );
   
-  // transforma um namespace em pasta
+  /**
+   * Retorna a pasta física correspondente ao namespace.
+   * 
+   * @param string $namespace
+   * @return string
+   * @throws CoreException
+   */
   private static function _namespaceToFolder(&$namespace) {
     // configuração: mapeamentos para namespaces ambíguos
     $cfg = cfg('Maps');
@@ -138,6 +144,58 @@ abstract class Core {
     
     $abs_path = DJCK . DS . implode(DS, $parts_namespace);
     return sdir_rtrim($abs_path);
+  }
+  
+  /**
+   * Retorna a pasta física correspondente ao pseudo-path.
+   * 
+   * @param string $path
+   * @return string
+   */
+  private static function _pseudoPathToFolder($path) {
+    $parts = explode('/', $path);
+    $type = array_shift($parts);
+    
+    // pega o path do tipo e acrescenta no inicio do caminho do arquivo
+    if (isset(self::$types[$type]['path'])) {
+      $path_ = explode('/', (string)self::$types[$type]['path']);
+      $parts = array_merge($path_, $parts);
+      unset($path_);
+    }
+    
+    // caminho absoluto para o arquivo
+    if (self::$types[$type]['core'] === true) {
+      $abs_path = CORE_PATH . DS;
+    } else {
+      if (self::$types[$type]['root'] === true) {
+        $abs_path = DJCK . DS;
+      } elseif (self::$types[$type]['plugins'] === true) {
+        $abs_path = PLUGIN_PATH . DS;
+      } else {
+        $abs_path = APP_PATH . DS;
+      }
+    }
+    $abs_path .= implode(DS, $parts);
+    
+    return sdir_rtrim($abs_path);
+  }
+  
+  /**
+   * Retorna uma representação separada por pontos de um diretorio.
+   * 
+   * Exemplo: /sistema/core/library/Class -> core.library.Class
+   * 
+   * @param string $folder
+   * @return string
+   */
+  private static function _parseAlias($folder) {
+    foreach (array(CORE_PATH => 'core', 
+                    APP_PATH => 'app', 
+                    PLUGIN_PATH => 'plugins',
+                    DJCK => 'root') as $search => $replacement) {
+      $folder = str_replace($search, $replacement, $folder);
+    }
+    return str_replace(DS, '.', $folder);
   }
   
   /**
@@ -292,9 +350,9 @@ abstract class Core {
   }
   
   /**
-   * Converte um pseudo-caminho ou namespace para sua pasta física correspondente.
+   * Converte um pseudo-path ou namespace para sua pasta física correspondente.
    * 
-   * Para pseudo-caminhos (deprecated)
+   * Para pseudo-paths (deprecated)
    * --------------------
    * core: alias para CORE_PATH
    * model: alias para APP_PATH/model
@@ -303,7 +361,7 @@ abstract class Core {
    * plugin: alias para PLUGIN_PATH
    * file/root: alias para DJCK
    * 
-   * Para os pseudo-caminhos funcionarem, eles devem iniciar com / (barra)
+   * Para os pseudo-paths funcionarem, eles devem iniciar com / (barra)
    * 
    * Para namespaces
    * ---------------
@@ -319,7 +377,7 @@ abstract class Core {
    * Não necessariamente precisa ser um array de ambiguidades, pode ser um simples mapeamento
    * para outra pasta, num string mesmo (ex: ['namespace' => 'outra/pasta']).
    * 
-   * @param string $path Namespace ou pseudo-caminho (deprecated) que será mapeado para sua pasta correspondente.
+   * @param string $path Namespace ou pseudo-path (deprecated) que será mapeado para sua pasta correspondente.
    * @return string Caminho absoluto do namespace
    */
   final static function path(&$path) {
@@ -328,33 +386,8 @@ abstract class Core {
     if (strpos($path, '/') !== 0) {
       return self::_namespaceToFolder($path);
     } else {
-      $path_ = substr($path, 1);
+      return self::_pseudoPathToFolder(substr($path, 1));
     }
-    
-    $parts = explode('/', $path_);
-    $type = array_shift($parts);
-    
-    // pega o path do tipo e acrescenta no inicio do caminho do arquivo
-    if (isset(self::$types[$type]['path'])) {
-      $path_ = explode('/', (string)self::$types[$type]['path']);
-      $parts = array_merge($path_, $parts);
-      unset($path_);
-    }
-    
-    // caminho absoluto para o arquivo
-    if (self::$types[$type]['core'] === true)
-      $abs_path = CORE_PATH . DS;
-    else {
-      if (self::$types[$type]['root'] === true)
-        $abs_path = DJCK . DS;
-      elseif (self::$types[$type]['plugins'] === true)
-        $abs_path = PLUGIN_PATH . DS;
-      else
-        $abs_path = APP_PATH . DS;
-    }
-    $abs_path .= implode(DS, $parts);
-    
-    return $abs_path;
   }
   
   /**
@@ -366,7 +399,7 @@ abstract class Core {
    * 
    * @private
    * @param string $file Nome da classe (arquivo)
-   * @param string $path Namespace ou pseudo-caminho de onde a classe está
+   * @param string $path Namespace ou pseudo-path de onde a classe está
    * @param string $alias Alias de localização do arquivo fisicamente, usada para registrar
    *                      no import() (interno)
    * @return string Caminho absoluto
@@ -382,13 +415,7 @@ abstract class Core {
     }
     
     // alias para o arquivo
-    $alias = $abs_path;
-    foreach (array(CORE_PATH => 'core', 
-                    APP_PATH => 'app', 
-                    PLUGIN_PATH => 'plugins') as $search => $replacement) {
-      $alias = str_replace($search, $replacement, $alias);
-    }
-    $alias = str_replace(DS, '.', $alias);
+    $alias = self::_parseAlias($abs_path);
     
     // coloca a extensão no arquivo
     foreach (array('.php', '.class.php') as $ext) {
@@ -408,17 +435,17 @@ abstract class Core {
    * @return boolean
    */
   final public static function load($class) {
-    // Sanitize class name.
+    // sanitize
     $class = strtolower($class);
     
     ++self::$calls;
 
-    // If the class already exists do nothing.
+    // se a classe ja existe, não fazer nada
     if (class_exists($class, false)) {
       return true;
     }
 
-    // If the class is registered include the file.
+    // se a classe está registrada, include
     if (isset(self::$classes[$class])) {
       //echo self::$classes[$class];
       include_once str_replace('#', DJCK, self::$classes[$class]);
@@ -441,9 +468,7 @@ abstract class Core {
   final static function depends($class) {
     ++self::$calls;
     
-    // If the class already exists do nothing.
-    $namespaced_class = str_replace('.', '\\', strtolower($class));
-    if (!class_exists(__NAMESPACE__.'\\'.$namespaced_class, false)) {
+    if (!class_exists($class, false)) {
       $trace = debug_backtrace();
       throw new CoreException('Arquivo '.basename($trace[0]['file']).' depende da classe '.$class);
     }
@@ -511,8 +536,9 @@ abstract class Core {
       $errstr  = $error["message"];
       
       // limpa qualquer buffer que tenha sido criado
-      if (!_DEV) // para nao apagar tudo quando tiver em modo DEV
+      if (!_DEV) { // para nao apagar tudo quando tiver em modo DEV
         ob_end_clean();
+      }
       
       // manda o erro como exception e captura depois com o handler padrao
       try {
@@ -543,20 +569,51 @@ abstract class Core {
       $html = false;
     }
     
+    $error_type = '';
+    $errno = $exception->getCode();
+    switch ($errno) {
+      case E_ERROR: 
+      case E_USER_ERROR:
+        $error_type = 'Fatal error'; break;
+      case E_WARNING:
+      case E_USER_WARNING:
+        $error_type = 'Warning'; break;
+      case E_PARSE:
+        $error_type = 'Parse error'; break;
+      case E_NOTICE:
+      case E_USER_NOTICE:
+        $error_type = 'Notice'; break;
+      case E_CORE_ERROR:
+        $error_type = 'Fatal core error'; break;
+      case E_CORE_WARNING:
+        $error_type = 'Core warning'; break;
+      case E_COMPILE_ERROR:
+        $error_type = 'Compile error'; break;
+      case E_COMPILE_WARNING:
+        $error_type = 'Compile warning'; break;
+      case E_STRICT:
+        $error_type = 'Strict standards'; break;
+      case E_RECOVERABLE_ERROR:
+        $error_type = 'Recoverable error'; break;
+      default:
+        $error_type = 'Unknown error';
+    }
+    
     // imprime algo amigavel na tela pro visitante
     if ($html) {
       echo '<html><head><title>Erro não capturado - '.SITE_TITLE.'</title></head>';
       echo '<body>';
     }
-    echo '<div style="margin:30px auto;border:1px solid #ccc;background:#eee;padding:15px;width:400px">';
-    echo '<span style="color:red">Erro não capturado ('.get_class($exception).'):</span> ' , 
+    echo '<div style="margin:30px;border:1px solid #ccc;background:#eee;padding:15px; overflow:auto;">';
+    echo '<span style="color:red">'.get_class($exception).' ['.$error_type.']:</span> ' , 
               $exception->getMessage(), 
             ' <div style="color:#999"> linha ', $exception->getLine(), 
             ' - ', str_replace(DJCK, '', $exception->getFile()),
-            '<pre><code>', $exception->getTraceAsString(), '</code></pre>',
+            '<pre><code>', str_replace(DJCK, '', $exception->getTraceAsString()), '</code></pre>',
             '</div>',
             "\n";
     echo '</div>';
+    finish(false);
     if ($html) {
       echo '</body></html>';
     }
@@ -616,7 +673,8 @@ abstract class Core {
     
     // define handler de errors do php para sempre jogarem exceptions
     //error_reporting(0); // COMENTADO PQ NÃO É PARA DESABILITAR OS ERROS POR AQUI
-    @ini_set('display_errors', _DEV);
+    //@ini_set('display_errors', _DEV);
+    @ini_set('display_errors', false);
     set_error_handler(array(__CLASS__, 'error_handler'));
     register_shutdown_function(array(__CLASS__, 'fatal_error_handler'));
     

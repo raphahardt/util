@@ -18,9 +18,9 @@ Core::import('Request',    '/core/network');
 Core::import('Dispatcher', '/core/core');
 
 // database
-/*Core::import('DbcConfig', 'core/database/dbc');
-Core::import('Dbc',       'core/database/dbc');
-Core::import('SQLBase',   'core/database/sql');*/
+/*Core::import('DbcConfig', 'Djck\database\dbc');
+Core::import('Dbc',       'Djck\database\dbc');
+Core::import('SQLBase',   'Djck\database\sql');*/
 
 // mvc
 Core::import('Controller', '/core/mvc/controller');
@@ -95,13 +95,17 @@ if (class_exists('database\DbcConfig', false)) {
 // -------------------------------------------------------------------------------------
 // importando controllers e mapeando rotas (Routes.neon) -------------------------------
 $cfg = cfg('Routes');
+$default_namespace = $cfg['controllers']['defaultNamespace'] ?: 'App';
+$registred_controllers = array();
 // controllers
 foreach ($cfg['controllers'] as $controller => $path) {
   if (is_string($controller)) {
-    Core::register($controller, '/controller'.$path);
+    $ctrl_path = $default_namespace.'\controller'.str_replace('/', '\\', $path);
+    $registred_controllers[ $controller ] = $ctrl_path.'\\'.$controller;
+    Core::register($controller, $ctrl_path);
   }
 }
-unset($controller,$path); //memoria
+unset($controller,$path,$default_namespace,$ctrl_path); //memoria
 
 // routes
 if (!isset($Router)) {
@@ -114,7 +118,7 @@ foreach ($cfg['routes'] as $name => $route_config) {
   // normaliza target
   if (is_string($target)) {
     // controller (NomeController)
-    $target = array($target => null);
+    $target = array($registred_controllers[ $target ] => null);
   } else {
     // link (nome#metodo)
     $target = key($target) . '#' . reset($target);
@@ -136,7 +140,7 @@ foreach ($cfg['routes'] as $name => $route_config) {
   // adiciona rota
   $Router->map($url, $target, $name);
 }
-unset($route_config,$subroute_config,$url,$target,$name); //memoria
+unset($route_config,$subroute_config,$url,$target,$name,$registred_controllers); //memoria
 
 
 // -------------------------------------------------------------------------------------

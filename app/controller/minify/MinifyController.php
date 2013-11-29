@@ -8,7 +8,7 @@ use Minify;
 use Minify_Loader;
 use Minify_Logger;
 
-Core::uses('AppController', 'App');
+Core::uses('AppController', 'App\controller');
 
 Core::import('Minify_Loader', '/plugin/min/lib/Minify/Loader.php'); // nome do arquivo não bate com nome da classe
 
@@ -19,7 +19,7 @@ Core::import('Minify_Loader', '/plugin/min/lib/Minify/Loader.php'); // nome do a
  */
 class MinifyController extends AppController {
   
-  function index($file) {
+  function executeIndex($file) {
     // try to disable output_compression (may not have an effect)
     ini_set('zlib.output_compression', '0');
     
@@ -45,10 +45,10 @@ class MinifyController extends AppController {
     
     // procura ver se o request está vindo do mesmo host, se não, mandar 403 (forbidden)
     // evita usarem os resources direto do seu dominio
-    $referer = $this->request->referer();
+    $referer = $this->Request->referer();
     if (!_DEV && (empty($referer) /*acesso direto*/ || 
         strpos($referer, SITE_FULL_URL) === false /*acesso externo*/)) {
-      $this->response->statusCode(403);
+      $this->Response->statusCode(403);
       echo '<h1>Forbidden</h1>'; // resposta curta e simples, como feedback visual apenas
       return;
     }
@@ -57,9 +57,9 @@ class MinifyController extends AppController {
     // carrega as configurações do minify
     $config = cfg('Minify');
 
-    Minify_Loader::register();
-    Minify::$uploaderHoursBehind = $config['uploaderHoursBehind'];
-    Minify::setCache(
+    \Minify_Loader::register();
+    \Minify::$uploaderHoursBehind = $config['uploaderHoursBehind'];
+    \Minify::setCache(
             isset($config['cachePath']) ? $config['cachePath'] : '', $config['cacheFileLocking']
     );
     // cria pasta, se ela nao existe
@@ -69,7 +69,7 @@ class MinifyController extends AppController {
 
     if ($config['documentRoot']) {
       $_SERVER['DOCUMENT_ROOT'] = $config['documentRoot'];
-      Minify::$isDocRootSet = true;
+      \Minify::$isDocRootSet = true;
     }
     
     // algumas opções fixas que não serão mudadas pelo arquivo de config
@@ -94,9 +94,9 @@ class MinifyController extends AppController {
     // debug
     if ($config['errorLogger']) {
       if (true === $config['errorLogger']) {
-        $config['errorLogger'] = FirePHP::getInstance(true);
+        $config['errorLogger'] = \FirePHP::getInstance(true);
       }
-      Minify_Logger::setLogger($config['errorLogger']);
+      \Minify_Logger::setLogger($config['errorLogger']);
     }
 
     // max age
@@ -114,16 +114,16 @@ class MinifyController extends AppController {
     
     if (isset($_GET['f']) || isset($_GET['g'])) {
       // serve!   
-      $result = Minify::serve(new Minify_Controller_MinApp(), $config['serveOptions']);
+      $result = \Minify::serve(new \Minify_Controller_MinApp(), $config['serveOptions']);
     }
     
     // imprime e manda os headers pelo controller, se deu certo
     if ($result['success']) {
-      $this->response->statusCode($result['statusCode']);
-      $this->response->header($result['headers']);
+      $this->Response->statusCode($result['statusCode']);
+      $this->Response->header($result['headers']);
       echo $result['content'];
     } else {
-      $this->response->statusCode(404);
+      $this->Response->statusCode(404);
       echo '<h1>Not Found</h1>'; // resposta curta e simples, como feedback visual apenas
     }
   }

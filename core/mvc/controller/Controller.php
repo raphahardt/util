@@ -13,20 +13,15 @@ class ControllerException extends CoreException {}
 abstract class Controller {
   
   /**
-   *
+   * Objeto 
    * @var Djck\network\Request 
    */
-  public $request;
+  public $Request;
   /**
    *
    * @var Djck\network\Response 
    */
-  public $response;
-  /**
-   *
-   * @var Djck\router\Router 
-   */
-  public $router;
+  public $Response;
   /**
    *
    * @var Djck\session\Session 
@@ -37,7 +32,6 @@ abstract class Controller {
   protected $ip = null;
   protected $token = null;
   protected $user;
-  protected $url;
   
   /**
    * Pasta onde estão os views do controller. Deixe vazio ou null para pasta raiz
@@ -56,16 +50,19 @@ abstract class Controller {
       $this->session = new \Session();
     }
    
-    $this->request = new Request();
-    $this->response = new Response();
+    $this->Request = new Request();
+    $this->Response = new Response();
     
-    $this->ip = $this->request->clientIp();
+    $this->ip = $this->Request->clientIp();
     if (!isset($this->user))
       $this->user = $_SESSION[SESSION_USER_NAME];
     
     $this->logged = is_object($this->user) && $this->user->id > 0;
     $this->token = $_SESSION[SESSION_TOKEN_NAME];
-    $this->url = $this->request->url;
+  }
+  
+  protected function registerCallback($function_name, $callback_name) {
+    
   }
   
   public function beforeExecute() {
@@ -94,7 +91,6 @@ abstract class Controller {
         return $this->{$method}($params[0], $params[1], $params[2], $params[3], $params[4], $params[5]);
       default:
         return call_user_func_array(array(&$this, $method), $params);
-        break;
     }
   }
   
