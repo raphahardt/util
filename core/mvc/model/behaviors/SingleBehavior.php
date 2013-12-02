@@ -5,6 +5,8 @@ namespace Djck\mvc\behaviors;
 use Djck\mvc\Behavior;
 use Djck\mvc\Model;
 
+use Djck\database\query;
+
 /**
  * Description of SingleBehavior
  *
@@ -35,7 +37,7 @@ class SingleBehavior extends Behavior {
       // em vez de 
       // setFilter(new SQLCriteria(campo, sinal, valor))
       if (count($args) == 3 && is_string($args[1])) {
-        $constraints = array(new SQLCriteria($args[0], $args[1], $args[2]));
+        $constraints = array(new query\Criteria($args[0], $args[1], $args[2]));
       }
     } elseif (count($args) == 1) {
       $cons = $args[0];
@@ -59,14 +61,14 @@ class SingleBehavior extends Behavior {
     // se for database, faz select no banco primeiro
     if ($Model->Mapper instanceOf \Djck\mvc\DatabaseMapperInterface) {
       $Model->Mapper->select();
-      // só atualiza o registro atual se encontrar apenas 1 registro
-      if ($Model->Mapper->count() != 1) {
-        $Model->Mapper->nullset();
-        $Model->Mapper->clearResult();
-        return false;
-      } else {
-        $Model->Mapper->first();
-      }
+    }
+    // só atualiza o registro atual se encontrar apenas 1 registro
+    if ($Model->Mapper->count() != 1) {
+      $Model->Mapper->nullset();
+      $Model->Mapper->clearResult();
+      return false;
+    } else {
+      $Model->Mapper->first();
     }
     return true;
   }
@@ -141,7 +143,7 @@ class SingleBehavior extends Behavior {
     // se o model também é um collection, chamar o metodo dele sempre primeiro 
     // em vez do single. isso permite que não importa a ordem dos behaviors, o collection
     // sempre terá precedencia no select
-    if ($Model->is('Collection')) {
+    if (is_numeric($offset) && $Model->is('Collection')) {
       return $Model->uses('Collection')->offsetExists($offset);
     }
     // FIXME verificar se o codigo acima dá problema ou não com usar o objeto com [0] e [campo] quando tem 2 behaviors
@@ -152,7 +154,7 @@ class SingleBehavior extends Behavior {
     // se o model também é um collection, chamar o metodo dele sempre primeiro 
     // em vez do single. isso permite que não importa a ordem dos behaviors, o collection
     // sempre terá precedencia no select
-    if ($Model->is('Collection')) {
+    if (is_numeric($offset) && $Model->is('Collection')) {
       return $Model->uses('Collection')->offsetGet($offset);
     }
 	// FIXME verificar se o codigo acima dá problema ou não com usar o objeto com [0] e [campo] quando tem 2 behaviors
@@ -164,15 +166,20 @@ class SingleBehavior extends Behavior {
   }
 
   public function offsetUnset(Model $Model, $offset) {
+    // TODO passar pro collection deletar o registro
     $Model->Mapper[$offset] = null;
   }
   
   // iterator
+  static public $in_iteration = false; // flag que guarda se o model está em iteração (foreach)
   public function current(Model $Model) {
     return $Model->Mapper->get();
   }
 
   public function key(Model $Model) {
+    if ($Model->is('Collection')) {
+      return $Model->uses('Collection')->key();
+    }
     return $Model->Mapper->getPointerValue();
   }
 
@@ -181,11 +188,14 @@ class SingleBehavior extends Behavior {
   }
   
   public function rewind(Model $Model) {
+    self::$in_iteration = true; // marca como dentro de iteração
     return $Model->Mapper->first();
   }
 
   public function valid(Model $Model) {
-    return !!$Model->Mapper->get();
+    $valid = !!$Model->Mapper->get();
+    self::$in_iteration = $valid; // continua numa iteração se o registro ainda for valido
+    return $valid;
   }
   
   public function count(Model $Model) {

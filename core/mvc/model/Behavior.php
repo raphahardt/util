@@ -11,7 +11,7 @@ Core::registerPackage('Djck\mvc:model\behaviors');
 /**
  * Description of Behavior
  *
- * @author Raphael Hardt <sistema13@furacao.com.br>
+ * @author Raphael Hardt <raphael.hardt@gmail.com>
  */
 abstract class Behavior {
   

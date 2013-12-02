@@ -118,16 +118,21 @@ abstract class Core {
       list($block, $subname) = explode(':', $block_namespace, 2);
       if ($cfg[ $block ]) {
         // se for array de um elemento só, usar proprio
-        if (is_array($cfg[ $block ]) && count($cfg[ $block ]) == 1) {
+        if (is_array($cfg[ $block ]) && count($cfg[ $block ]) == 1 && is_numeric(key($cfg[ $block ]))) {
           $cfg[ $block ] = reset($cfg[ $block ]);
         }
         if (is_array($cfg[ $block ])) {
-          if (!$subname) {
+          /*if (!$subname) {
             throw new CoreException('Path de namespace "'.$block.'" não mapeado '
                     . '(este package usa '.count($cfg[ $block ]).' subpackages.'
                     . ' Use namespace\\package:subpackage para selecionar');
           }
-          $cfg[ $block ] = $cfg[ $block ][$subname];
+          $cfg[ $block ] = $cfg[ $block ][$subname];*/
+          if ($subname) {
+            $cfg[ $block ] = $cfg[ $block ][$subname];
+          } else {
+            $cfg[ $block ] = $block;
+          }
         }
         $block_namespace = $cfg[ $block ];
       } else {
@@ -619,7 +624,7 @@ abstract class Core {
     }
     
     // avisa o webmaster ou faz log
-    //mail('sistema13@furacao.com.br', 'teste erro', $exception->getMessage());
+    //mail('...@t...', 'teste erro', $exception->getMessage());
   }
   
   /**

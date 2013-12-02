@@ -1,3 +1,3 @@
 <div id="content_#{$ajax_id}">
-#{block 'site.body'}#{/block}
+#{block 'skin.body.content'}#{/block}
 </div>

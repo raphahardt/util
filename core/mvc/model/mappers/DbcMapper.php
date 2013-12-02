@@ -3,9 +3,14 @@
 namespace Djck\mvc\mappers;
 
 use Djck\Core;
+
 use Djck\database\Dbc;
+use Djck\database\query;
+
 use Djck\mvc\Mapper;
 use Djck\mvc\DatabaseMapperInterface;
+
+use Djck\types;
 
 /**
  * Description of DbcMapper
@@ -24,12 +29,21 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
   
   /**
    *
-   * @var Dbc 
+   * @var Djck\database\Dbc 
    * @access protected
    */
   protected $dbc;
   
+  /**
+   *
+   * @var Djck\database\query\Field[]
+   */
   protected $fields;
+  
+  /**
+   *
+   * @var Djck\database\query\base\ExpressionBase[]
+   */
   protected $filters;
   
   protected $offset = 0;
@@ -50,17 +64,18 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
   private $_pristine_data = array();
   
   public function init() {
-    if (!isset($this->dbc))
+    if (!isset($this->dbc)) {
       $this->dbc = Dbc::getInstance();
-    
-    if (!isset($this->entity))
-      throw new CoreException('Obrigatorio definir uma tabela');
-    
-    $this->fields = $this->entity->Fields;
-    $this->_fields_array = array();
-    foreach ($this->fields as $f) {
-      $this->_fields_array[$f->getAlias()] = null;
     }
+    
+    if (!isset($this->entity)) {
+      throw new \Djck\CoreException('Obrigatorio definir uma tabela');
+    }
+    
+    if (!isset($this->fields)) {
+      $this->setFields($this->entity->getFields());
+    }
+    
     // inicia os dados já com os campos definidos
     $this->nullset();
     
@@ -113,11 +128,15 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
     // o count só retornará registros persistentes
     if ($flag == self::PERSISTED) {
       ++$this->count_persisted;
+      ++$this->count_geral;
     }
   }
   public function pop() {
     $last = end($this->result);
-    if ($last['flag'] == self::PERSISTED) --$this->count_persisted;
+    if ($last['flag'] == self::PERSISTED) {
+      --$this->count_persisted;
+      --$this->count_geral;
+    }
     return parent::pop();
   }
 
@@ -130,11 +149,15 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
     // o count só retornará registros persistentes
     if ($flag == self::PERSISTED) {
       ++$this->count_persisted;
+      ++$this->count_geral;
     }
   }
   public function shift() {
     $last = reset($this->result);
-    if ($last['flag'] == self::PERSISTED) --$this->count_persisted;
+    if ($last['flag'] == self::PERSISTED) {
+      --$this->count_persisted;
+      --$this->count_geral;
+    }
     return parent::shift();
   }
   
@@ -142,8 +165,9 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
     if ($len >= 1) {
       for($i=$offset;$i<$offset+$len;$i++) {
         if ($this->result[$i]['flag'] == self::PERSISTED) {
-          if ($this->_delete($this->result[$i]['data'][key($this->pointer)]) > 0) { 
+          if ($this->_delete($this->result[$i]['data'][$this->getPointer()]) > 0) { 
             --$this->count_persisted;
+            --$this->count_geral;
           }
         }
       }
@@ -153,11 +177,12 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
   
   public function remove($pointer = null) {
     if (!isset($pointer)) {
-      $pointer = $this->data[ key($this->pointer) ];
+      $pointer = $this->data[ $this->getPointer() ];
     }
     if (parent::remove($pointer)) {
       if ($this->_delete($pointer) > 0) { 
         --$this->count_persisted;
+        --$this->count_geral;
         return true;
       }
     }
@@ -167,6 +192,7 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
   public function clearResult() {
     parent::clearResult();
     $this->count_persisted = 0;
+    $this->count_geral = 0;
   }
 
   public function setFilter($cons) {
@@ -188,7 +214,7 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
     $this->filters = array();
     foreach ($constraints as $c) {
       
-      if (!($c instanceof SQLExpressionBase)) {
+      if (!($c instanceof query\base\ExpressionBase)) {
         throw new ModelException('O filtro de um ModelCollection deve sempre ser uma ou mais expressões');
         /*if ($c instanceof SQLFieldBase) {
           $c = new SQLCriteria($c, '=', $c->getValue());
@@ -215,9 +241,8 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
         $o = $o[0];
 		$o->setOrder($direction);
       }
-      $this->order[$o->getHash()] = $o;
+      $this->order[] = $o;
     }
-    
   }
   
   public function setOffset($offset) {
@@ -293,12 +318,13 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
     
     // só pega registros não deletados, se a tabela foi configurada para tal
     if ($this->permanent_delete !== true) {
-      $where[] = new SQLCriteria(new SQLField(self::DEFAULT_DELETE_NAME), '=', '0');
+      $where[] = new query\Criteria(new query\Field(self::DEFAULT_DELETE_NAME), '=', '0');
     }
-    if ($where)
-      $where = new SQLExpression('AND', $where);
+    if ($where) {
+      $where = new query\Expression('AND', $where);
+    }
 
-    $instruction = new SQLISelect($this->fields, $this->entity, $where, $this->order);
+    $instruction = new query\ISelect($this->fields, $this->entity, $where, $this->order);
     $sql = (string) $instruction;
     $bind_v = $instruction->getBinds();
     
@@ -326,13 +352,13 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
             // transforma algum campo data em objeto
             foreach ($row as &$col) {
               // parece data..
-              if (preg_match(SQLBase::REGEXP_DATE,$col)) {
+              if (types\DateTime::seemsDateTime($col)) {
                 // lê a data e cria time baseado nisso
                 // FIXME arrumar isso aqui, nao deixar desse jeito
                 list($date, $time) = explode(' ', $col, 2);
                 list($day, $month, $year) = explode('/', $date);
                 list($hour, $minute, $second) = explode(':', $time);
-                $col = new SQLTDateTime(mktime($hour, $minute, $second, $month, $day, $year));
+                $col = new types\DateTime(mktime($hour, $minute, $second, $month, $day, $year));
               }
             }
             unset($col);
@@ -360,8 +386,9 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
     $bd->free();
     
     // guarda os valores atuais para log de alteracao
-    if ($success)
+    if ($success) {
       $this->saveState();
+    }
 
     return $num_rows; // retorna o registro fetchado
   }
@@ -375,7 +402,7 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
     
     // se o registro atual não tiver id ainda, inserir ele também
     $need_id = false;
-    if (/*!$this->data[key($this->pointer)] && */$this->isDirty()) {
+    if (/*!$this->data[$this->getPointer()] && */$this->isDirty()) {
       $need_id = true;
       $this->push($this->data);
     }
@@ -425,7 +452,7 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
             if ($need_id) {
               $id = $bd->insert_id();
               // atualiza o registro atual com o id retornado
-              $this->data[key($this->pointer)] = $id;
+              $this->data[$this->getPointer()] = $id;
               // truque: retira o ultimo elemento do result (que é o proprio registro atual)
               // e depois adiciona de novo com o push.
               $this->pop();
@@ -434,7 +461,7 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
             
             /*if ($affected == 1) {
               $id = $bd->insert_id();
-              $this->result[$index]['data'][key($this->pointer)] = $id;
+              $this->result[$index]['data'][$this->getPointer()] = $id;
               
             } elseif ($affected > 1) {
               // TODO: fazer um select para pegar os registros e atualizar o result
@@ -495,21 +522,21 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
     // tenta usar o pointer, se possivel
     if (empty($where) && $this->getPointerValue()) {
       $id = $this->getPointer();
-      $where[] = _c($this->{$id}, '=', $this->getPointerValue());
+      $where[] = new query\Criteria($this->{$id}, '=', $this->getPointerValue());
     }
     
     $has_filter = count($where) > 0;
     
     // só pega registros não deletados, se a tabela foi configurada para tal
     if ($this->permanent_delete !== true) {
-      $where[] = _c(new SQLField(self::DEFAULT_DELETE_NAME), '=', '0');
+      $where[] = new query\Criteria(new query\Field(self::DEFAULT_DELETE_NAME), '=', '0');
     }
     // filtro customizado para apagar por id
     if ($custom_filter) {
-      $pointer = key($this->pointer);
-      $where[] = _c($this->entity->{$pointer}, '=', $custom_filter);
+      $pointer = $this->getPointer();
+      $where[] = new query\Criteria($this->entity->{$pointer}, '=', $custom_filter);
     }
-    $where = new SQLExpression('AND', $where);
+    $where = new query\Expression('AND', $where);
     
     // se não tiver nenhum filtro, não fazer update
     if (!$has_filter) {
@@ -519,15 +546,15 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
     // cria o SQL
     if ($this->permanent_delete === true) {
       // se for permanente, deleta
-      $instr = new SQLIDelete($this->entity, $where);
+      $instr = new query\IDelete($this->entity, $where);
     } else {
       // se não for permanente, só fazer update
-      $exc_field = new SQLField(self::DEFAULT_DELETE_NAME);
+      $exc_field = new query\Field(self::DEFAULT_DELETE_NAME);
       $exc_field->setValue('1');
-      $excem_field = new SQLField(self::DEFAULT_DELETE_DATE_NAME);
-      $excem_field->setValue(new SQLTDateTime());
+      $excem_field = new query\Field(self::DEFAULT_DELETE_DATE_NAME);
+      $excem_field->setValue(new types\DateTime());
 
-      $instr = new SQLIUpdate($this->entity, array($exc_field, $excem_field), $where);
+      $instr = new query\IUpdate($this->entity, array($exc_field, $excem_field), $where);
     }
 
     // pega as variaveis criadas do buildSQL
@@ -578,8 +605,9 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
     // sempre limpar o prepare, não importa se retornou true ou false
     $bd->free();
     
-    if ($success)
+    if ($success) {
       $this->saveState();
+    }
 
     return $affected;
   }
@@ -596,16 +624,16 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
     // tenta usar o pointer, se possivel
     if (empty($where) && $this->getPointerValue()) {
       $id = $this->getPointer();
-      $where[] = new SQLCriteria($this->{$id}, '=', $this->getPointerValue());
+      $where[] = new query\Criteria($this->{$id}, '=', $this->getPointerValue());
     }
     
     $has_filter = count($where) > 0;
     
     // só pega registros não deletados, se a tabela foi configurada para tal
     if ($this->permanent_delete !== true) {
-      $where[] = _c(new SQLField(self::DEFAULT_DELETE_NAME), '=', '0');
+      $where[] = new query\Criteria(new query\Field(self::DEFAULT_DELETE_NAME), '=', '0');
     }
-    $where = new SQLExpression('AND', $where);
+    $where = new query\Expression('AND', $where);
     
     // se não tiver nenhum filtro, não fazer update
     if (!$has_filter) {
@@ -613,7 +641,7 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
     }
 
     // cria o SQL
-    $instr = new SQLIUpdate($this->entity, $this->_getUpdatedValues(), $where);
+    $instr = new query\IUpdate($this->entity, $this->_getUpdatedValues(), $where);
 
     // pega as variaveis criadas do buildSQL
     $sql = (string)$instr;
@@ -654,8 +682,9 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
     // sempre limpar o prepare, não importa se retornou true ou false
     $bd->free();
     
-    if ($success)
+    if ($success) {
       $this->saveState();
+    }
 
     return $affected;
   }
@@ -689,16 +718,11 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
       return $this->fields[$field];
     }
     
-    /*switch ($name) {
-      case 'Fields':
-        return $this->fields;
-      case 'Tables':
-        return $this->tables;
-      case 'Table':
-        return $this->_getFirstTable();
-      default:
-        throw new ModelException('Propriedade '.$name.' não existe');
-    }*/
+    $fieldobj = $this->entity->getField($field);
+    if ($fieldobj) {
+      return $fieldobj;
+    }
+    
   }
   
   /**

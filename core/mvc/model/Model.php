@@ -38,7 +38,7 @@ class ModelException extends CoreException {}
  * @method boolean usesTree() Usa o Behavior
  * 
  * 
- * @author Raphael Hardt <sistema13@furacao.com.br>
+ * @author Raphael Hardt <raphael.hardt@gmail.com>
  * @since 0.1 (24/09/2013)
  * @version 0.1 (24/09/2013)
  */
@@ -97,7 +97,8 @@ class Model extends AbstractObject implements \ArrayAccess, \Countable, \Iterato
   protected function instanciateBehavior($behavior) {
     if (!isset(self::$behavior_instances[$behavior])) {
       $class = $behavior.'Behavior';
-      self::$behavior_instances[$behavior] = new $class();
+      $namespaced_class = __NAMESPACE__.'\\behaviors\\'.$class;
+      self::$behavior_instances[$behavior] = new $namespaced_class();
     }
     return self::$behavior_instances[$behavior];
   }

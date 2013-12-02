@@ -40,10 +40,10 @@ class Dbc extends AbstractSingleton {
     if (!isset($config)) {
       $config = 'default';
     }
-
+    
     // pega a configuracao
     $config_params = DbcConfig::get($config);
-
+    
     // faz uma conexão com o banco de dados
     $this->con = mysqli_connect($config_params['#host'], 
             $config_params['#user'], 

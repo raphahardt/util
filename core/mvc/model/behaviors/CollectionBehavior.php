@@ -114,11 +114,33 @@ class CollectionBehavior extends SingleBehavior {
   
   // arrayaccess
   public function offsetExists(Model $Model, $offset) {
-    return !!$Model->Mapper->get((int)$offset);
+    if (!is_numeric($offset) && $Model->is('Single')) {
+      return $Model->uses('Single')->offsetExists($offset);
+    }
+    $old_offset = null;
+    if (self::$in_iteration) {
+      $old_offset = $Model->Mapper->index();
+    }
+    $exists = !!$Model->Mapper->get((int)$offset);
+    if (isset($old_offset)) {
+      $Model->Mapper->get($old_offset);
+    }
+    return $exists;
   }
 
   public function offsetGet(Model $Model, $offset) {
-    return $Model->Mapper->get((int)$offset);
+    if (!is_numeric($offset) && $Model->is('Single')) {
+      return $Model->uses('Single')->offsetGet($offset);
+    }
+    $old_offset = null;
+    if (self::$in_iteration) {
+      $old_offset = $Model->Mapper->index();
+    }
+    $data = $Model->Mapper->get((int)$offset);
+    if (isset($old_offset)) {
+      $Model->Mapper->get($old_offset);
+    }
+    return $data;
   }
 
   public function offsetSet(Model $Model, $offset, $value) {
@@ -133,5 +155,8 @@ class CollectionBehavior extends SingleBehavior {
   
   // iterator
   // herda de single
+  public function key(Model $Model) {
+    return $Model->Mapper->index();
+  }
   
 }

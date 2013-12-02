@@ -12,41 +12,44 @@ use Djck\Core;
 Core::import('AbstractObject',    '/core/core');
 Core::import('AbstractSingleton', '/core/core');
 
+// types
+Core::importPackage('Djck\types');
+
 // interface
-Core::import('Response',   '/core/network');
-Core::import('Request',    '/core/network');
+Core::import('Response',   'Djck\network');
+Core::import('Request',    'Djck\network');
 Core::import('Dispatcher', '/core/core');
 
 // database
-/*Core::import('DbcConfig', 'Djck\database\dbc');
-Core::import('Dbc',       'Djck\database\dbc');
-Core::import('SQLBase',   'Djck\database\sql');*/
+Core::import('DbcConfig', 'Djck\database:dbc');
+Core::import('Dbc',       'Djck\database:dbc');
+Core::importPackage('Djck\database\query');
 
 // mvc
-Core::import('Controller', '/core/mvc/controller');
-Core::import('Mapper',     '/core/mvc/model');
-Core::import('Behavior',   '/core/mvc/model');
-Core::import('Model',      '/core/mvc/model');
-Core::import('View',       '/core/mvc/view');
+Core::import('Controller', 'Djck\mvc:controller');
+Core::import('Mapper',     'Djck\mvc:model');
+Core::import('Behavior',   'Djck\mvc:model');
+Core::import('Model',      'Djck\mvc:model');
+Core::import('View',       'Djck\mvc:view');
 
 // router
-Core::import('Router', '/core/router');
+Core::import('Router', 'Djck\router');
 
 // client comm
-Core::import('Cookie', '/core/cookie');
+Core::import('Cookie', 'Djck\cookie');
 
 // logger
-Core::import('Logger', '/core/logger');
+Core::import('Logger', 'Djck\logger');
 
 // upload handler (https://github.com/blueimp/jQuery-File-Upload/blob/master/server/php/UploadHandler.php)
-Core::import('Uploader', '/core/upload');
+Core::import('Uploader', 'Djck\upload');
 
 // neon parser (para ler configuracoes em .neon)
-Core::import('Parser', '/core/parser');
+Core::import('Parser', 'Djck\parser');
 
 // classes para debug, testes, e utilidades só usadas localmente
 if (_DEV) {
-  Core::import('UnitTest', '/core/util');
+  Core::import('UnitTest', 'Djck\util');
 }
 
 // --------------------------------------
@@ -69,13 +72,13 @@ unset($class,$path); //memoria
 
 // -------------------------------------------------------------------------------------
 // pegando configurações do banco (Connectios.neon) ------------------------------------
-if (class_exists('database\DbcConfig', false)) {
+if (class_exists(__NAMESPACE__.'\\database\\DbcConfig')) {
   $cfg = cfg('Connections');
   foreach ($cfg as $name => $dbc_config) {
 
     if (is_string($dbc_config)) {
       // modo link
-      database\DbcConfig::set($name, database\DbcConfig::get($dbc_config));
+      database\DbcConfig::copy($name, $dbc_config);
 
     } else {
       // modo normal

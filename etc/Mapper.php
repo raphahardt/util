@@ -68,12 +68,9 @@ interface NestedItfMapper extends DefaultItfMapper {
  * 
  * @abstract
  * 
- * @package mvc
- * @subpackage model
- * 
  * @property-read mixed $nome_do_campo Campo do Mapper
  * 
- * @author Raphael Hardt <sistema13@furacao.com.br>
+ * @author Raphael Hardt <raphael.hardt@gmail.com>
  * @version 0.1 (24/09/2013)
  */
 abstract class Mapper implements ArrayAccess {

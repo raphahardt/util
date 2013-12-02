@@ -1,6 +1,6 @@
 <?php
 
-namespace Djck\storage;
+namespace Djck\types;
 
 /**
  * Classe que faz cache persistente das informações de um objeto que precisa guardar

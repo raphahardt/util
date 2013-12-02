@@ -2,6 +2,8 @@
 
 namespace Djck\mvc\mappers;
 
+use Djck\CoreException;
+
 use Djck\mvc\Mapper;
 use Djck\mvc\FileMapperInterface;
 

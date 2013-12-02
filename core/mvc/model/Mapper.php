@@ -56,12 +56,9 @@ interface NestedMapperInterface extends DefaultMapperInterface {
  * 
  * @abstract
  * 
- * @package mvc
- * @subpackage model
- * 
  * @property-read mixed $nome_do_campo Campo do Mapper
  * 
- * @author Raphael Hardt <sistema13@furacao.com.br>
+ * @author Raphael Hardt <raphael.hardt@gmail.com>
  * @version 0.1 (24/09/2013)
  */
 abstract class Mapper implements \ArrayAccess {
@@ -154,7 +151,7 @@ abstract class Mapper implements \ArrayAccess {
   public function find($pointer) {
     // limpa os dados internos
     $this->nullset();
-    if (($offset = $this->_find(array(key($this->pointer)=>$pointer))) !== false) {
+    if (($offset = $this->_find(array($this->getPointer()=>$pointer))) !== false) {
       $this->set($this->result[$offset]['data']);
       // após encontrar, o pointeiro interno deve apontar agora para o registro no result
       $this->internal_pointer = $offset; // VER O QUE ISSO IMPACTA
@@ -169,9 +166,17 @@ abstract class Mapper implements \ArrayAccess {
    */
   public function nullset() {
     $this->data = null;
-    $this->pointer = array(key($this->pointer) => null);
+    $this->pointer = array($this->getPointer() => null);
     // se o registro atual é apagado, o ponteiro interno deve apontar pra algo que nao exista
     $this->internal_pointer = -1; // VER O QUE ISSO IMPACTA
+  }
+  
+  /**
+   * Retorna o index do ponteiro interno
+   * @return int
+   */
+  public function index() {
+      return $this->internal_pointer;
   }
   
   /**
@@ -185,7 +190,7 @@ abstract class Mapper implements \ArrayAccess {
       $this->nullset();
       return;
     }
-    $id = key($this->pointer);
+    $id = $this->getPointer();
     $values = array_change_key_case($data, CASE_LOWER);
     
     $this->data = $values;
@@ -236,12 +241,12 @@ abstract class Mapper implements \ArrayAccess {
     }
     if ($data === null) return;
     
-    if (!isset($data[ key($this->pointer) ]))
-      $data[ key($this->pointer) ] = $this->autoIncrement();
+    if (!isset($data[ $this->getPointer() ]))
+      $data[ $this->getPointer() ] = $this->autoIncrement();
     
     $this->result[ $this->count++ ] = array(
         'data' => $data,
-        //'pointer' => $data[ key($this->pointer) ], // valor do ponteiro
+        //'pointer' => $data[ $this->getPointer() ], // valor do ponteiro
         'flag' => $flag, // flag é usado nos mappers de banco de dados para saber se o registro foi salvo ou não no bd
     );
     $this->internal_pointer = $this->count-1;
@@ -277,7 +282,7 @@ abstract class Mapper implements \ArrayAccess {
    */
   public function remove($pointer = null) {
     if (!isset($pointer)) {
-      $pointer = $this->data[ key($this->pointer) ];
+      $pointer = $this->data[ $this->getPointer() ];
     }
     if (($offset = $this->find($pointer)) !== false) {
       array_splice($this->result, $offset, 1);
@@ -299,12 +304,12 @@ abstract class Mapper implements \ArrayAccess {
     }
     if ($data === null) return;
     
-    if (!isset($data[ key($this->pointer) ]))
-      $data[ key($this->pointer) ] = $this->autoIncrement();
+    if (!isset($data[ $this->getPointer() ]))
+      $data[ $this->getPointer() ] = $this->autoIncrement();
     
     array_unshift($this->result, array(
         'data' => $data,
-        //'pointer' => $data[ key($this->pointer) ], // valor do ponteiro
+        //'pointer' => $data[ $this->getPointer() ], // valor do ponteiro
         'flag' => $flag, // flag é usado nos mappers de banco de dados para saber se o registro foi salvo ou não no bd
     ));
     ++$this->count;
@@ -383,7 +388,7 @@ abstract class Mapper implements \ArrayAccess {
     $data = $this->data;
     if ($data === null) return;
     
-    if (isset($this->result[ $this->internal_pointer ]) && $data[key($this->pointer)])
+    if (isset($this->result[ $this->internal_pointer ]) && $data[$this->getPointer()])
       $this->result[ $this->internal_pointer ]['data'] = $data;
   }
   
@@ -415,7 +420,7 @@ abstract class Mapper implements \ArrayAccess {
    */
   public function sort($column = null, $desc = false) {
     if (!isset($column))
-      $column = key($this->pointer);
+      $column = $this->getPointer();
     
     $this->_quicksort($column, 0, $this->count-1, $desc === true || strtolower($desc) === 'desc');
     return true;
