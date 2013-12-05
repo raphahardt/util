@@ -3,6 +3,8 @@
 namespace Djck\mvc;
 
 use Djck\Core;
+use Djck\types;
+use Djck\database\query;
 
 // registra os mappers principais
 Core::registerPackage('Djck\mvc:model\mappers');
@@ -56,7 +58,7 @@ interface NestedMapperInterface extends DefaultMapperInterface {
  * 
  * @abstract
  * 
- * @property-read mixed $nome_do_campo Campo do Mapper
+ * @property mixed $nome_do_campo Campo do Mapper
  * 
  * @author Raphael Hardt <raphael.hardt@gmail.com>
  * @version 0.1 (24/09/2013)
@@ -68,6 +70,7 @@ abstract class Mapper implements \ArrayAccess {
   
   // onde dados do registro ficam guardados
   protected $data;
+  protected $_pristine_data;
   
   // entidade que guarda a persistencia do mapper
   // pode ser uma tabela, um nome de arquivo, ou até nada (dados temporarios)
@@ -75,15 +78,30 @@ abstract class Mapper implements \ArrayAccess {
   
   // identificador do registro
   // pode ser uma SQLExpression (Dbc), o numero da linha (file), um id, um index de array, etc..
-  protected $pointer = array('id'=>null);
+  protected $pointer = array('id' => null);
   
   // guarda os registros retornados pelo find() ou filter(), e o ponteiro quem vai lidar
   // com o registro unico. o mapper funcionará como um recordset
-  protected $result = array();
+  protected $result = null;
+  // guarda só os ids dos registros que foram filtrados
+  protected $_filtered_result = array();
   protected $internal_pointer = 0;
   protected $count = 0;
   
+  protected $offset = 0;
+  protected $limit = 0;
+  protected $fields = array();
+   // serve como base para dados que vierem para serem alterados ou inseridos
+  protected $_fields_array = array();
+  protected $filters = array();
+  protected $order = array();
+  
   private $autocommit = true;
+  
+  public function __construct() {
+    $this->result = new types\StorageArray();
+    //$this->result = array();
+  }
   
   /**
    * Retorna o proximo valor do autoincrementador interno do Mapper.
@@ -98,7 +116,7 @@ abstract class Mapper implements \ArrayAccess {
     // o autoincremente sempre terá que retonar algo unico, por isso está sendo mandado
     // o timestamp atual em float.
     // isso corrige o bug de, dois scripts escreverem em arquivo e pegarem o mesmo id ao mesmo tempo
-    return microtime(true);
+    return uniqid() . microtime(true);
   }
   
   /**
@@ -160,12 +178,235 @@ abstract class Mapper implements \ArrayAccess {
     return false;
   }
   
+  public function setFilter($exprs) {
+    if (!is_array($exprs)) return;
+    
+    $this->_filtered_result = array(); // limpa os resultados filtrados anteriormente, importante
+    $this->filters = array();
+    foreach ($exprs as $expr) {
+      if (!($expr instanceof query\base\ExpressionBase)) {
+        throw new ModelException('O filtro deve ser uma expressão.');
+      }
+      
+      $this->filters[$expr->getHash()] = $expr;
+    }
+  }
+  
+  public function getFilter() {
+    return $this->filters;
+  }
+  
+  /**
+   * Grava os valores atuais numa variável interna. Serve para criar o log na alteração
+   * de valores.
+   */
+  public function saveState() {
+    $this->_pristine_data = $this->data;
+    /*foreach ($this->data as $k => $f) {
+      $this->_pristine_data[$k] = $f;
+    }*/
+  }
+  
+  /**
+   * Função auxiliar que retorna apenas os campos que foram definidos valores.
+   * É usado para as instruções de UPDATE e INSERT só alterarem os campos alterados
+   * @return type
+   */
+  protected function _getUpdatedValues() {
+    if (!$this->data) return array();
+    $fields = array();
+    foreach ($this->data as $k => $v) {
+      if ($v != $this->_pristine_data[$k]) {
+        $fields[$k] = $v;
+      }
+    }
+    return $fields;
+  }
+  
+  /**
+   * Valida um critério como se fosse um parser de banco de dados.
+   * 
+   * Serve para mappers que não são DatabaseMapperInterface.
+   * 
+   * @param array $data Dados a serem testados
+   * @param query\Field $field
+   * @param string $operator
+   * @param mixed|query\Field $value
+   * @return boolean
+   */
+  protected function _evalCriteria($data, $field, $operator, $value) {
+    $comp1 = $data[ $field->getAlias() ];
+    if ($value instanceof query\Field) {
+      $comp2 = $data[ $value->getAlias() ];
+    } else {
+      $comp2 = $value;
+    }
+    switch ($operator) {
+      case '=':
+        return $comp1 == $comp2; // comparação normal == porque banco também faz assim
+      case '!=':
+      case '<>':
+        return $comp1 != $comp2;
+      case '>':
+        return $comp1 > $comp2;
+      case '<':
+        return $comp1 < $comp2;
+      case '>=':
+        return $comp1 >= $comp2;
+      case '<=':
+        return $comp1 <= $comp2;
+      // TODO: fazer LIKE, REGEXP, BETWEEN, etc...
+    }
+    return false;
+  }
+  
+  protected function _evalExpression($data, query\Expression $expression) {
+    
+    // pega o operador e as subexpressoes
+    $operator = $expression->getOperator();
+    $expressions = $expression->getExpressees();
+
+    // definindo elemento neutro inicial
+    // se o operador for OR, começar o resultado com FALSE (0 | teste = teste)
+    // se não (AND), começar com TRUE (1 & teste = teste)
+    if ($operator == 'OR') {
+      $result = false;
+    } else {
+      $result = true;
+    }
+    // corre por cada subexpressao
+    foreach ($expressions as $e) {
+      // se o elemento for outra expressão, recursivamente testa-las
+      if ($e instanceof query\Expression) {
+        // mesma logica do elemento neutro acima
+        if ($operator == 'OR') {
+          $result || $result = $this->_evalExpression($data, $e);
+        } else {
+          $result && $result = $this->_evalExpression($data, $e);
+        }
+      } else {
+        // se chegou até aqui, é pq é um criteria, e deve ser testado
+        $result_criteria = $this->_evalCriteria($data, 
+                $e->getField(), $e->getOperator(), $e->getValue());
+        
+        if ($operator == 'OR') {
+          $result || $result = $result_criteria;
+        } else {
+          $result && $result = $result_criteria;
+        }
+      }
+    }
+    return $result;
+  }
+  
+  protected function _filterResult($filter=array()) {
+    if (empty($filter)) {
+      $this->_filtered_result = array();
+      return 0;
+    }
+    if ($num_rows = count($this->_filtered_result) && $filter == $this->filters) {
+      return $num_rows;
+    }
+    if ($filter) {
+      $filter = new query\Expression('AND', $filter);
+    }
+
+    $num_rows = 0;
+    
+    $this->_filtered_result = array();
+    for ($i = $this->offset; $i < $this->count && $i-$this->offset < $this->limit; $i++) {
+      $data = $this->result[$i];
+      
+      if ($this->_evalExpression($data['data'], $filter)) {
+        //$this->_filtered_result[ $data['data'][ $this->getPointer() ] ] = true;
+        $this->_filtered_result[ $i ] = true;
+        ++$num_rows;
+      }
+    }
+    return $num_rows;
+  }
+  
+  public function select($fields=array(), $distinct=false) {
+    if ($distinct) {
+      throw new \Djck\CoreException('$distinct não suportado para Mapper');
+    }
+    // TODO: selecionar por $fields
+    
+    $order = $this->order;
+    $where = $this->filters;
+    if (!$where) $where = array();
+    
+    // só pega registros não deletados, se a tabela foi configurada para tal
+    /*if ($this->permanent_delete !== true) {
+      $where[] = new query\Criteria(new query\Field(self::DEFAULT_DELETE_NAME), '=', '0');
+    }*/
+
+    $num_rows = $this->_filterResult($where);
+    
+    // guarda os valores atuais para log de alteracao
+    if ($num_rows) {
+      $this->saveState();
+    }
+
+    return $num_rows; // retorna o registro fetchado
+  }
+  
+  public function update() {
+    
+    $where = $this->filters;
+    if (!$where) $where = array();
+    
+    // primeiro tenta ver se tem id para alterar
+    if (empty($where) && ($id = $this->getPointerValue())) {
+      $new_data = $this->get();
+      
+      $offset = $this->find($id);
+      if ($offset !== false) {
+        // se for id, muda só 1 registro
+        $this->set($new_data);
+        return 1;
+      }
+    }
+    
+    // se não tiver nenhum filtro, não fazer update
+    $has_filter = count($where) > 0;
+    if (!$has_filter) {
+      return 0;
+    }
+    
+    // só pega registros não deletados, se a tabela foi configurada para tal
+    /*if ($this->permanent_delete !== true) {
+      $where[] = new query\Criteria(new query\Field(self::DEFAULT_DELETE_NAME), '=', '0');
+    }*/
+    $num_rows = $this->_filterResult($where);
+    
+    $affected = 0;
+    $updated_values = $this->_getUpdatedValues(); // só valores que foram alterados
+    
+    foreach ($this->_filtered_result as $i => $_) {
+      $this->get($i);
+      foreach ($updated_values as $field => $val) {
+        // altera cada campo que foi alterado
+        $this[$field] = $val;
+      }
+      $this->refresh();
+      ++$affected;
+    }
+    
+    if ($affected) {
+      $this->saveState();
+    }
+
+    return $affected;
+  }
+  
   /**
    * Limpa os dados do registro atual. Não modifica o result.
    * @return void
    */
   public function nullset() {
     $this->data = null;
+    $this->saveState(); // pristine
     $this->pointer = array($this->getPointer() => null);
     // se o registro atual é apagado, o ponteiro interno deve apontar pra algo que nao exista
     $this->internal_pointer = -1; // VER O QUE ISSO IMPACTA
@@ -194,6 +435,7 @@ abstract class Mapper implements \ArrayAccess {
     $values = array_change_key_case($data, CASE_LOWER);
     
     $this->data = $values;
+    $this->saveState();
     $this->pointer = array($id => $data[$id]);
   }
   
@@ -225,7 +467,8 @@ abstract class Mapper implements \ArrayAccess {
    * @return void
    */
   public function clearResult() {
-    $this->result = array();
+    //$this->result = array();
+    $this->result->clean();
     $this->internal_pointer = 0;
     $this->count = 0;
   }
@@ -257,7 +500,8 @@ abstract class Mapper implements \ArrayAccess {
    * @return array Os dados do registro deletado
    */
   public function pop() {
-    $result = array_pop($this->result);
+    //$result = array_pop($this->result);
+    $result = $this->result->pop();
     --$this->count;
     return $result['data'];
   }
@@ -270,7 +514,8 @@ abstract class Mapper implements \ArrayAccess {
    */
   public function splice($offset, $len=1) {
     if ($len === null) $len = $this->count;
-    array_splice($this->result, $offset, $len);
+    //array_splice($this->result, $offset, $len);
+    $this->result->splice($offset, $len);
     $this->count-=$len;
     return true;
   }
@@ -285,7 +530,8 @@ abstract class Mapper implements \ArrayAccess {
       $pointer = $this->data[ $this->getPointer() ];
     }
     if (($offset = $this->find($pointer)) !== false) {
-      array_splice($this->result, $offset, 1);
+      //array_splice($this->result, $offset, 1);
+      $this->result->splice($offset, 1);
       --$this->count;
       $this->nullset();
       return true;
@@ -304,12 +550,13 @@ abstract class Mapper implements \ArrayAccess {
     }
     if ($data === null) return;
     
-    if (!isset($data[ $this->getPointer() ]))
-      $data[ $this->getPointer() ] = $this->autoIncrement();
+    $pointer = $this->getPointer();
+    if (!isset($data[ $pointer ]))
+      $data[ $pointer ] = $this->autoIncrement();
     
-    array_unshift($this->result, array(
+    $this->result->unshift(array(
         'data' => $data,
-        //'pointer' => $data[ $this->getPointer() ], // valor do ponteiro
+        //'pointer' => $data[ $pointer ], // valor do ponteiro
         'flag' => $flag, // flag é usado nos mappers de banco de dados para saber se o registro foi salvo ou não no bd
     ));
     ++$this->count;
@@ -321,7 +568,8 @@ abstract class Mapper implements \ArrayAccess {
    * @return array Os dados do registro deletado
    */
   public function shift() {
-    $result = array_shift($this->result);
+    //$result = array_shift($this->result);
+    $result = $this->result->shift();
     --$this->count;
     return $result['data'];
   }
@@ -334,12 +582,27 @@ abstract class Mapper implements \ArrayAccess {
     return $this->data !== null || current($this->pointer) !== null;
   }
   
+  protected function _searchNextFilteredResult($inverse = false) {
+    if (!empty($this->_filtered_result)) {
+      while (!$this->_filtered_result[$this->internal_pointer]) {
+        // se não achar, retornar -1
+        if ($this->internal_pointer < 0 || $this->internal_pointer >= $this->count) {
+          $this->internal_pointer = -1;
+          break;
+        }
+        // anda com o ponteiro até achar o proximo registro filtrado
+        $this->internal_pointer += $inverse ? -1 : 1;
+      }
+    }
+  }
+  
   /**
    * Anda com o ponteiro interno até o primeiro registro e o retorna.
    * @return array Os dados do registro
    */
   public function first() {
     $this->internal_pointer = 0;
+    $this->_searchNextFilteredResult();
     $data = $this->result[$this->internal_pointer];
     $this->set($data['data']);
     return $data ? $data['data'] : false;
@@ -351,6 +614,7 @@ abstract class Mapper implements \ArrayAccess {
    */
   public function next() {
     ++$this->internal_pointer;
+    $this->_searchNextFilteredResult();
     $data = $this->result[$this->internal_pointer];
     $this->set($data['data']);
     return $data ? $data['data'] : false;
@@ -362,6 +626,7 @@ abstract class Mapper implements \ArrayAccess {
    */ 
   public function prev() {
     --$this->internal_pointer;
+    $this->_searchNextFilteredResult(true); // inverse
     $data = $this->result[$this->internal_pointer];
     $this->set($data['data']);
     return $data ? $data['data'] : false;
@@ -373,6 +638,7 @@ abstract class Mapper implements \ArrayAccess {
    */
   public function last() {
     $this->internal_pointer = $this->count-1;
+    $this->_searchNextFilteredResult(true); // inverse
     $data = $this->result[$this->internal_pointer];
     $this->set($data['data']);
     return $data ? $data['data'] : false;
@@ -509,6 +775,10 @@ abstract class Mapper implements \ArrayAccess {
     return $this->entity;
   }
   
+  public function getField($name) {
+    return new query\Field($name);
+  }
+  
   public function setFields() {
     
   }
@@ -583,6 +853,7 @@ abstract class Mapper implements \ArrayAccess {
       $offset = strtolower($offset);
       
       $this->data[ $offset ] = $value;
+      $this->saveState();
     }
   }
   

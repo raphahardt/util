@@ -194,42 +194,6 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
     $this->count_persisted = 0;
     $this->count_geral = 0;
   }
-
-  public function setFilter($cons) {
-    /*$args = func_get_args();
-    
-    $constraints = array();
-    if (count($args) > 1) {
-      $constraints = $args;
-    } elseif (count($args) == 1) {
-      $cons = $args[0];
-      if (is_array($cons)) {
-        $constraints = $cons;
-      } else {
-        $constraints[] = $cons;
-      }
-    }*/
-    if (!is_array($constraints) || empty($constraints)) return false;
-    
-    $this->filters = array();
-    foreach ($constraints as $c) {
-      
-      if (!($c instanceof query\base\ExpressionBase)) {
-        throw new ModelException('O filtro de um ModelCollection deve sempre ser uma ou mais expressões');
-        /*if ($c instanceof SQLFieldBase) {
-          $c = new SQLCriteria($c, '=', $c->getValue());
-        } else {
-          $first_table = $this->_getFirstTable();
-          if (!$first_table[(string)$c])
-            throw new ModelException('Campo '.$c.' não existe na tabela do Model.');
-          $c = new SQLCriteria($first_table[(string)$c], '=', null);
-        }*/
-      }
-      
-      $this->filters[$c->getHash()] = $c;
-    }
-    
-  }
   
   public function setOrderBy($orders) {
     if (!is_array($orders) || empty($orders)) return false;
@@ -239,7 +203,7 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
       if (is_array($o)) {
         $direction = $o[1];
         $o = $o[0];
-		$o->setOrder($direction);
+        $o->setOrder($direction);
       }
       $this->order[] = $o;
     }
@@ -277,11 +241,9 @@ class DbcMapper extends Mapper implements DatabaseMapperInterface {
    */
   public function setFields($fields) {
     $this->fields = array();
+    $this->_fields_array = array();
     foreach ($fields as $f) {
       $this->fields[$f->getHash()] = $f;
-    }
-    $this->_fields_array = array();
-    foreach ($this->fields as $f) {
       $this->_fields_array[$f->getAlias()] = null;
     }
   }

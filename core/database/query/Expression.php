@@ -22,7 +22,16 @@ implements base\HasAlias, base\HasOperator,
   protected $alias;
   protected $orderDesc = false;
   
-  public function __construct($operator, $alias, $expr = null) {
+  /**
+   * Cria uma expressão para filtragem de registros de um Model (ou Mapper)
+   * 
+   * @param string $operator Operador de ligação a ser usada na expressão. Pode ser OR ou AND
+   * @param string|base\Expressee $alias Alias para expressão (opcional)
+   * @param base\Expressee $expr Uma ou mais subexpressões que serão ligadas pelo operador
+   * @param base\Expressee $expr2 ... 
+   * @throws base\QueryException
+   */
+  public function __construct($operator, $alias = null, $expr = null) {
     $args = func_get_args();
     
     // validando operador
@@ -30,9 +39,11 @@ implements base\HasAlias, base\HasOperator,
       throw new base\QueryException('Defina um operador para a expressão');
     }
     // primeiro definir o alias, para gerar o hash corretamente
-    if (!($alias instanceof base\ExpressionBase) && !is_array($alias)) {
+    if (!($alias instanceof base\Expressee) && !is_array($alias)) {
       $this->alias = $alias;
-      unset($args[1]);
+      if ($alias !== null) {
+        unset($args[1]);
+      }
     }
     
     // depois chama o construct do parent, que cria o hash (entre outros)
@@ -47,6 +58,13 @@ implements base\HasAlias, base\HasOperator,
     
   }
   
+  /**
+   * Adiciona subexpressões a expressão atual.
+   * 
+   * @param base\Expressee|scalar $expr Uma ou mais subexpressões a serem adicionadas
+   * @param base\Expressee|scalar $expr2 ...
+   * @throws base\QueryException
+   */
   public function add($expr, $expr_ = null) {
     $expressions = func_get_args();
     
@@ -74,14 +92,17 @@ implements base\HasAlias, base\HasOperator,
     }
   }
   
+  public function getExpressees() {
+    return $this->expressees;
+  }
+  
+  // === base\HasAlias ===
   public function setAlias($alias) {
     $this->alias = $alias;
   }
-  
   public function getAlias() {
     return $this->alias;
   }
-  
   public function toAlias() {
     if ($this->alias) {
       return $this->alias;
