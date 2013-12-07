@@ -257,7 +257,7 @@ abstract class Base extends AbstractObject {
   }
   
   protected function makeHash() {
-    return uniqid();
+    return uniqid().mt_rand(0, 9999);
   }
   
   function getHash() {

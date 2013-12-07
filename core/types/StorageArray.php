@@ -387,7 +387,7 @@ class StorageArray extends \ArrayIterator/* implements \ArrayAccess, \Countable,
     $offset = $this->_normalizeOffset($offset);
     
     $this->checkCacheLoad($offset);
-    isset($this->storage[$offset]);
+    return isset($this->storage[$offset]);
   }
   
   /**

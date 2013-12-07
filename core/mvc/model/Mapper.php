@@ -48,6 +48,161 @@ interface NestedMapperInterface extends DefaultMapperInterface {
   // addnode, removenode, etc...
 }
 
+abstract class MapperBase {
+  
+  /**
+   * Função auxiliar para comparação de valores (usado no _quicksort)
+   * @param type $val1
+   * @param type $val2
+   * @return type
+   */
+  protected function _compare($val1, $val2) {
+    if (is_string($val1) && is_string($val2)) {
+      return strnatcasecmp($val1, $val2);
+    }
+    return $val1 < $val2 ? -1 : ($val1 > $val2 ? 1 : 0);
+  }
+  
+  /**
+   * Funçao auxiliar que usa o algoritmo QuickSort para ordernar os registros do result
+   * @param type $col
+   * @param type $left
+   * @param type $right
+   * @param type $inverse
+   */
+  protected function _quicksort(&$array, $col, $left, $right, $inverse = false) {
+    $i = $left;
+    $j = $right;
+    $pivot = (int)(($i + $j) / 2);
+    $val_pivot = $array[$pivot]['data'][$col];
+    while ($i < $j) {
+      if ($inverse) {
+        while ($this->_compare($array[$i]['data'][$col], $val_pivot) > 0) { // menor
+          ++$i;
+        }
+        while ($this->_compare($array[$j]['data'][$col], $val_pivot) < 0) { // maior
+          --$j;
+        }
+      } else {
+        while ($this->_compare($array[$i]['data'][$col], $val_pivot) < 0) { // menor
+          ++$i;
+        }
+        while ($this->_compare($array[$j]['data'][$col], $val_pivot) > 0) { // maior
+          --$j;
+        }
+      }
+      if ($i <= $j) {
+        $aux = $array[$i];
+        $array[$i] = $array[$j];
+        $array[$j] = $aux;
+        ++$i;
+        --$j;
+      }
+    }
+    if ($j > $left) $this->_quicksort($array, $col, $left, $j, $inverse);
+    if ($i < $right) $this->_quicksort($array, $col, $i, $right, $inverse);
+  }
+  
+  /**
+   * Função auxiliar que seleciona apenas as colunas do $array_default com os valores do 
+   * $array (só os que os dois tiverem em comum
+   * @param array $array_default
+   * @param array $array
+   * @return array
+   */
+  protected function _diff($array_default, $array) {
+    $diff = array_diff_key($array, $array_default);
+    $result = array_merge($array_default, $array);
+    return array_diff_key($result, $diff);
+  }
+  
+  /**
+   * Função auxiliar que valida um critério como se fosse um parser de banco de dados.
+   * 
+   * Serve para mappers que não são DatabaseMapperInterface.
+   * 
+   * @param array $data Dados a serem testados
+   * @param query\Field $field
+   * @param string $operator
+   * @param mixed|query\Field $value
+   * @return boolean
+   */
+  protected function _evalCriteria($data, $field, $operator, $value) {
+    $comp1 = $data[ $field->getAlias() ];
+    if ($value instanceof query\Field) {
+      $comp2 = $data[ $value->getAlias() ];
+    } else {
+      $comp2 = $value;
+    }
+    switch ($operator) {
+      case '=':
+        return $comp1 == $comp2; // comparação normal == porque banco também faz assim
+      case '!=':
+      case '<>':
+        return $comp1 != $comp2;
+      case '>':
+        return $comp1 > $comp2;
+      case '<':
+        return $comp1 < $comp2;
+      case '>=':
+        return $comp1 >= $comp2;
+      case '<=':
+        return $comp1 <= $comp2;
+      // TODO: fazer LIKE, REGEXP, BETWEEN, etc...
+    }
+    return false;
+  }
+  
+  /**
+   * Função auxiliar que valida um critério como se fosse um parser de banco de dados.
+   * 
+   * Serve para mappers que não são DatabaseMapperInterface.
+   * 
+   * @param type $data Dados a serem testados
+   * @param \Djck\database\query\Expression $expression
+   * @return boolean
+   */
+  protected function _evalExpression($data, query\Expression $expression) {
+    
+    // pega o operador e as subexpressoes
+    $operator = $expression->getOperator();
+    $expressions = $expression->getExpressees();
+
+    // definindo elemento neutro inicial
+    // se o operador for OR, começar o resultado com FALSE (0 | teste = teste)
+    // se não (AND), começar com TRUE (1 & teste = teste)
+    if ($operator == 'OR') {
+      $result = false;
+    } else {
+      $result = true;
+    }
+    // corre por cada subexpressao
+    foreach ($expressions as $e) {
+      // se o elemento for outra expressão, recursivamente testa-las
+      if ($e instanceof query\Expression) {
+        // mesma logica do elemento neutro acima
+        if ($operator == 'OR') {
+          $result || $result = $this->_evalExpression($data, $e);
+        } else {
+          $result && $result = $this->_evalExpression($data, $e);
+        }
+      } else {
+        // se chegou até aqui, é pq é um criteria, e deve ser testado
+        $result_criteria = $this->_evalCriteria($data, 
+                $e->getField(), $e->getOperator(), $e->getValue());
+        
+        if ($operator == 'OR') {
+          $result || $result = $result_criteria;
+        } else {
+          $result && $result = $result_criteria;
+        }
+      }
+    }
+    return $result;
+  }
+  
+}
+
 /**
  * Representa dados, persistentes ou não.
  * Os Data Mappers (Mapper) fazem a ligação direta entre dados e Model.
@@ -63,7 +218,7 @@ interface NestedMapperInterface extends DefaultMapperInterface {
  * @author Raphael Hardt <raphael.hardt@gmail.com>
  * @version 0.1 (24/09/2013)
  */
-abstract class Mapper implements \ArrayAccess {
+abstract class Mapper extends MapperBase implements \ArrayAccess {
   
   const FRESH = 0;
   const PERSISTED = 1;
@@ -113,10 +268,11 @@ abstract class Mapper implements \ArrayAccess {
    */
   protected function autoIncrement() {
     
-    // o autoincremente sempre terá que retonar algo unico, por isso está sendo mandado
+    // o autoincrement sempre terá que retonar algo unico, por isso está sendo mandado
     // o timestamp atual em float.
     // isso corrige o bug de, dois scripts escreverem em arquivo e pegarem o mesmo id ao mesmo tempo
-    return uniqid() . microtime(true);
+    //return uniqid() . microtime(true);
+    return uniqid() . mt_rand(100000,999999);
   }
   
   /**
@@ -148,6 +304,7 @@ abstract class Mapper implements \ArrayAccess {
       $found = false;
       if (is_array($search)) {
         $found = reset($search) == $this->result[$i]['data'][ key($search) ];
+        // TODO: melhorar essa parte, pois chamar key() e reset() toda hora é lento
       } else {
         // TODO: implementar também pra quando for pesquisado por uma string, por ex
       }
@@ -178,154 +335,6 @@ abstract class Mapper implements \ArrayAccess {
     return false;
   }
   
-  public function setFilter($exprs) {
-    if (!is_array($exprs)) return;
-    
-    $this->_filtered_result = array(); // limpa os resultados filtrados anteriormente, importante
-    $this->filters = array();
-    foreach ($exprs as $expr) {
-      if (!($expr instanceof query\base\ExpressionBase)) {
-        throw new ModelException('O filtro deve ser uma expressão.');
-      }
-      
-      $this->filters[$expr->getHash()] = $expr;
-    }
-  }
-  
-  public function getFilter() {
-    return $this->filters;
-  }
-  
-  /**
-   * Grava os valores atuais numa variável interna. Serve para criar o log na alteração
-   * de valores.
-   */
-  public function saveState() {
-    $this->_pristine_data = $this->data;
-    /*foreach ($this->data as $k => $f) {
-      $this->_pristine_data[$k] = $f;
-    }*/
-  }
-  
-  /**
-   * Função auxiliar que retorna apenas os campos que foram definidos valores.
-   * É usado para as instruções de UPDATE e INSERT só alterarem os campos alterados
-   * @return type
-   */
-  protected function _getUpdatedValues() {
-    if (!$this->data) return array();
-    $fields = array();
-    foreach ($this->data as $k => $v) {
-      if ($v != $this->_pristine_data[$k]) {
-        $fields[$k] = $v;
-      }
-    }
-    return $fields;
-  }
-  
-  /**
-   * Valida um critério como se fosse um parser de banco de dados.
-   * 
-   * Serve para mappers que não são DatabaseMapperInterface.
-   * 
-   * @param array $data Dados a serem testados
-   * @param query\Field $field
-   * @param string $operator
-   * @param mixed|query\Field $value
-   * @return boolean
-   */
-  protected function _evalCriteria($data, $field, $operator, $value) {
-    $comp1 = $data[ $field->getAlias() ];
-    if ($value instanceof query\Field) {
-      $comp2 = $data[ $value->getAlias() ];
-    } else {
-      $comp2 = $value;
-    }
-    switch ($operator) {
-      case '=':
-        return $comp1 == $comp2; // comparação normal == porque banco também faz assim
-      case '!=':
-      case '<>':
-        return $comp1 != $comp2;
-      case '>':
-        return $comp1 > $comp2;
-      case '<':
-        return $comp1 < $comp2;
-      case '>=':
-        return $comp1 >= $comp2;
-      case '<=':
-        return $comp1 <= $comp2;
-      // TODO: fazer LIKE, REGEXP, BETWEEN, etc...
-    }
-    return false;
-  }
-  
-  protected function _evalExpression($data, query\Expression $expression) {
-    
-    // pega o operador e as subexpressoes
-    $operator = $expression->getOperator();
-    $expressions = $expression->getExpressees();
-
-    // definindo elemento neutro inicial
-    // se o operador for OR, começar o resultado com FALSE (0 | teste = teste)
-    // se não (AND), começar com TRUE (1 & teste = teste)
-    if ($operator == 'OR') {
-      $result = false;
-    } else {
-      $result = true;
-    }
-    // corre por cada subexpressao
-    foreach ($expressions as $e) {
-      // se o elemento for outra expressão, recursivamente testa-las
-      if ($e instanceof query\Expression) {
-        // mesma logica do elemento neutro acima
-        if ($operator == 'OR') {
-          $result || $result = $this->_evalExpression($data, $e);
-        } else {
-          $result && $result = $this->_evalExpression($data, $e);
-        }
-      } else {
-        // se chegou até aqui, é pq é um criteria, e deve ser testado
-        $result_criteria = $this->_evalCriteria($data, 
-                $e->getField(), $e->getOperator(), $e->getValue());
-        
-        if ($operator == 'OR') {
-          $result || $result = $result_criteria;
-        } else {
-          $result && $result = $result_criteria;
-        }
-      }
-    }
-    return $result;
-  }
-  
-  protected function _filterResult($filter=array()) {
-    if (empty($filter)) {
-      $this->_filtered_result = array();
-      return 0;
-    }
-    if ($num_rows = count($this->_filtered_result) && $filter == $this->filters) {
-      return $num_rows;
-    }
-    if ($filter) {
-      $filter = new query\Expression('AND', $filter);
-    }
-
-    $num_rows = 0;
-    
-    $this->_filtered_result = array();
-    for ($i = $this->offset; $i < $this->count && $i-$this->offset < $this->limit; $i++) {
-      $data = $this->result[$i];
-      
-      if ($this->_evalExpression($data['data'], $filter)) {
-        //$this->_filtered_result[ $data['data'][ $this->getPointer() ] ] = true;
-        $this->_filtered_result[ $i ] = true;
-        ++$num_rows;
-      }
-    }
-    return $num_rows;
-  }
-  
   public function select($fields=array(), $distinct=false) {
     if ($distinct) {
       throw new \Djck\CoreException('$distinct não suportado para Mapper');
@@ -343,6 +352,9 @@ abstract class Mapper implements \ArrayAccess {
 
     $num_rows = $this->_filterResult($where);
     
+    // reseta ponteiro
+    $this->first();
+    
     // guarda os valores atuais para log de alteracao
     if ($num_rows) {
       $this->saveState();
@@ -351,6 +363,22 @@ abstract class Mapper implements \ArrayAccess {
     return $num_rows; // retorna o registro fetchado
   }
   
+  /**
+   * Salva as alterações feitas no registro e replica para o result.
+   * 
+   * Se foi feito um filtro anterior, as alterações serão feitas nos registros do
+   * result que validem como TRUE a expressão de filtro.
+   * 
+   * Exemplo de uso
+   * --------------
+   * <code>
+   * $mapper->setFilter(array(new query\Criteria($mapper->campo, '>', 10)));
+   * $mapper['campo'] = 20;
+   * $mapper->update(); // vai alterar todos os registros em que 'campo' for maior que 10
+   * </code>
+   * 
+   * @return int
+   */
   public function update() {
     
     $where = $this->filters;
@@ -358,12 +386,13 @@ abstract class Mapper implements \ArrayAccess {
     
     // primeiro tenta ver se tem id para alterar
     if (empty($where) && ($id = $this->getPointerValue())) {
-      $new_data = $this->get();
+      $new_data = $this->data;
       
       $offset = $this->find($id);
       if ($offset !== false) {
         // se for id, muda só 1 registro
         $this->set($new_data);
+        $this->refresh();
         return 1;
       }
     }
@@ -384,6 +413,9 @@ abstract class Mapper implements \ArrayAccess {
     $updated_values = $this->_getUpdatedValues(); // só valores que foram alterados
     
     foreach ($this->_filtered_result as $i => $_) {
+      if ($i < 0) {
+        continue; // ignora -1
+      }
       $this->get($i);
       foreach ($updated_values as $field => $val) {
         // altera cada campo que foi alterado
@@ -392,6 +424,9 @@ abstract class Mapper implements \ArrayAccess {
       $this->refresh();
       ++$affected;
     }
+    
+    // reseta ponteiro
+    $this->first();
     
     if ($affected) {
       $this->saveState();
@@ -654,8 +689,14 @@ abstract class Mapper implements \ArrayAccess {
     $data = $this->data;
     if ($data === null) return;
     
-    if (isset($this->result[ $this->internal_pointer ]) && $data[$this->getPointer()])
-      $this->result[ $this->internal_pointer ]['data'] = $data;
+    if (isset($this->result[ $this->internal_pointer ]) && $data[$this->getPointer()]) {
+      //$this->result[ $this->internal_pointer ]['data'] = $data;
+      // tive que mudar pq o PHP 5.3 não suporta a sintaxe acima com offsetGet passado por referencia direto
+      // funções passadas por referencia requerem o & nos dois lugares
+      // ver: http://www.php.net/manual/en/language.references.return.php
+      $result = &$this->result->offsetGet( $this->internal_pointer );
+      $result['data'] = $data;
+    }
   }
   
   /**
@@ -688,74 +729,8 @@ abstract class Mapper implements \ArrayAccess {
     if (!isset($column))
       $column = $this->getPointer();
     
-    $this->_quicksort($column, 0, $this->count-1, $desc === true || strtolower($desc) === 'desc');
+    $this->_quicksort($this->result, $column, 0, $this->count-1, $desc === true || strtolower($desc) === 'desc');
     return true;
-  }
-  
-  /**
-   * Função auxiliar para comparação de valores (usado no _quicksort)
-   * @param type $val1
-   * @param type $val2
-   * @return type
-   */
-  protected function _compare($val1, $val2) {
-    if (is_string($val1) && is_string($val2)) {
-      return strnatcasecmp($val1, $val2);
-    }
-    return $val1 < $val2 ? -1 : ($val1 > $val2 ? 1 : 0);
-  }
-  
-  /**
-   * Funçao auxiliar que usa o algoritmo QuickSort para ordernar os registros do result
-   * @param type $col
-   * @param type $left
-   * @param type $right
-   * @param type $inverse
-   */
-  protected function _quicksort($col, $left, $right, $inverse = false) {
-    $i = $left;
-    $j = $right;
-    $pivot = (int)(($i + $j) / 2);
-    $val_pivot = $this->result[$pivot]['data'][$col];
-    while ($i < $j) {
-      if ($inverse) {
-        while ($this->_compare($this->result[$i]['data'][$col], $val_pivot) > 0) { // menor
-          ++$i;
-        }
-        while ($this->_compare($this->result[$j]['data'][$col], $val_pivot) < 0) { // maior
-          --$j;
-        }
-      } else {
-        while ($this->_compare($this->result[$i]['data'][$col], $val_pivot) < 0) { // menor
-          ++$i;
-        }
-        while ($this->_compare($this->result[$j]['data'][$col], $val_pivot) > 0) { // maior
-          --$j;
-        }
-      }
-      if ($i <= $j) {
-        $aux = $this->result[$i];
-        $this->result[$i] = $this->result[$j];
-        $this->result[$j] = $aux;
-        ++$i;
-        --$j;
-      }
-    }
-    if ($j > $left) $this->_quicksort($col, $left, $j, $inverse);
-    if ($i < $right) $this->_quicksort($col, $i, $right, $inverse);
-  }
-  
-  /**
-   * Função auxiliar que seleciona apenas as colunas do $array_default com os valores do 
-   * $array (só os que os dois tiverem em comum
-   * @param array $array_default
-   * @param array $array
-   * @return array
-   */
-  protected function _diff($array_default, $array) {
-    $diff = array_diff_key($array, $array_default);
-    $result = array_merge($array_default, $array);
-    return array_diff_key($result, $diff);
   }
   
   /**
@@ -812,6 +787,91 @@ abstract class Mapper implements \ArrayAccess {
     return reset($this->pointer);
   }
   
+  public function setFilter($exprs) {
+    if (!is_array($exprs)) return;
+    
+    $this->_filtered_result = array(); // limpa os resultados filtrados anteriormente, importante
+    $this->filters = array();
+    foreach ($exprs as $expr) {
+      if (!($expr instanceof query\base\ExpressionBase)) {
+        throw new ModelException('O filtro deve ser uma expressão.');
+      }
+      
+      $this->filters[$expr->getHash()] = $expr;
+    }
+  }
+  
+  public function getFilter() {
+    return $this->filters;
+  }
+  
+  /**
+   * Grava os valores atuais numa variável interna. Serve para criar o log na alteração
+   * de valores.
+   */
+  public function saveState() {
+    $this->_pristine_data = $this->data;
+    /*foreach ($this->data as $k => $f) {
+      $this->_pristine_data[$k] = $f;
+    }*/
+  }
+  
+  /**
+   * Filtra o result de acordo com as expressões passadas.
+   * Deve ser sempre um array.
+   * 
+   * As expressões desse array serão interligadas por uma expressão AND.
+   * Caso queira usar OR, criar um array que possua 1 expressão OR com as subexpressões
+   * dentro dele, que vai resultar em algo do tipo: AND(OR(exp1, exp2...))
+   * 
+   * @param \Djck\database\query\Expression[] $filter Array de expressões
+   * @return int Número de linhas retornadas do filtro
+   */
+  protected function _filterResult($filter=array()) {
+    if (empty($filter)) {
+      $this->_filtered_result = array();
+      return 0;
+    }
+    if ($num_rows = count($this->_filtered_result) && $filter == $this->filters) {
+      return $num_rows;
+    }
+    if ($filter) {
+      $filter = new query\Expression('AND', $filter);
+    }
+
+    $num_rows = 0;
+    
+    $this->_filtered_result = array();
+    $this->_filtered_result[-1] = true; // flag para dizer que foi filtrado alguma coisa
+    for ($i = $this->offset; $i < $this->count && ($this->limit == 0 || $i-$this->offset < $this->limit); $i++) {
+      $data = $this->result[$i];
+      
+      if ($this->_evalExpression($data['data'], $filter)) {
+        //$this->_filtered_result[ $data['data'][ $this->getPointer() ] ] = true;
+        $this->_filtered_result[ $i ] = true;
+        ++$num_rows;
+      }
+    }
+    return $num_rows;
+  }
+  
+  /**
+   * Função auxiliar que retorna apenas os campos que foram definidos valores.
+   * É usado para as instruções de UPDATE e INSERT só alterarem os campos alterados
+   * 
+   * @return array
+   */
+  protected function _getUpdatedValues() {
+    if (!$this->data) return array();
+    $fields = array();
+    foreach ($this->data as $k => $v) {
+      if ($v != $this->_pristine_data[$k]) {
+        $fields[$k] = $v;
+      }
+    }
+    return $fields;
+  }
+  
   /**
    * Retorna o número de registros do result
    * @return integer
@@ -853,7 +913,7 @@ abstract class Mapper implements \ArrayAccess {
       $offset = strtolower($offset);
       
       $this->data[ $offset ] = $value;
-      $this->saveState();
+      //$this->saveState();
     }
   }
   

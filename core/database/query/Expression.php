@@ -66,7 +66,11 @@ implements base\HasAlias, base\HasOperator,
    * @throws base\QueryException
    */
   public function add($expr, $expr_ = null) {
-    $expressions = func_get_args();
+    if (is_array($expr) && func_num_args() === 1) {
+      $expressions = $expr;
+    } else {
+      $expressions = func_get_args();
+    }
     
     foreach ($expressions as $expression) {
       if ($expression instanceof base\Base) {
