@@ -4,13 +4,14 @@ namespace Djck\mvc;
 
 use Djck\Core;
 use Djck\CoreException;
+use Djck\system\AbstractObject;
 
 use Djck\network\Request;
 use Djck\network\Response;
 
 class ControllerException extends CoreException {}
 
-abstract class Controller {
+abstract class Controller extends AbstractObject {
   
   /**
    * Objeto 

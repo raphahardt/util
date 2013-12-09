@@ -3,6 +3,7 @@
 namespace Djck\mvc;
 
 use Djck\Core;
+use Djck\system\AbstractObject;
 use Djck\types;
 use Djck\database\query;
 
@@ -48,7 +49,7 @@ interface NestedMapperInterface extends DefaultMapperInterface {
   // addnode, removenode, etc...
 }
 
-abstract class MapperBase {
+abstract class MapperBase extends AbstractObject {
   
   /**
    * Função auxiliar para comparação de valores (usado no _quicksort)
@@ -201,6 +202,76 @@ abstract class MapperBase {
     return $result;
   }
   
+  /**
+   * Função auxiliar que valida um critério como se fosse um parser de banco de dados.
+   * 
+   * Serve para mappers que não são DatabaseMapperInterface.
+   * 
+   * @param type $data Dados a serem testados
+   * @param \Djck\database\query\Expression $expression
+   * @return boolean
+   */
+  protected function _evalMathExpression($data, query\Expression $expression) {
+    
+    // pega o operador e as subexpressoes
+    $operator = $expression->getOperator();
+    
+    if (!in_array($operator, array('+', '-', '*', '/', '%'))) {
+      throw new \Djck\CoreException('O valor deve ser obrigatóriamente uma expressão aritmética.');
+    }
+    
+    $expressions = $expression->getExpressees();
+
+    // corre por cada subexpressao
+    $result = null;
+    foreach ($expressions as $e) {
+      
+      if ($e instanceof query\Expression) {
+        // se o elemento for outra expressão, recursivamente testa-las
+        $result_math = $this->_evalMathExpression($data, $e);
+      } elseif ($e instanceof query\Field) {
+        $result_math = $data[ $e->getAlias() ];
+      } elseif (is_scalar($e)) {
+        $result_math = $e;
+      } else {
+        throw new \Djck\CoreException('O valor deve ser ou um campo do mapper ou um escalar.');
+      }
+
+      switch ($operator) {
+        case '+':
+          if ($result === null) $result = 0;
+          $result += $result_math;
+          break;
+        case '-':
+          if ($result === null) {
+            $result = $result_math;
+          } else {
+            $result -= $result_math;
+          }
+          break;
+        case '*':
+          if ($result === null) $result = 1;
+          $result *= $result_math;
+          break;
+        case '/':
+          if ($result === null) {
+            $result = $result_math;
+          } else {
+            $result /= $result_math;
+          }
+          break;
+        case '%':
+          if ($result === null) {
+            $result = $result_math;
+          } else {
+            $result %= $result_math;
+          }
+          break;
+      }
+    }
+    return $result;
+  }
+  
 }
 
 /**
@@ -335,15 +406,26 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
     return false;
   }
   
+  /**
+   * Seleciona os registros de uma entidade.
+   * 
+   * @param query\Field[] $fields
+   * @param boolean $distinct Se retorna apenas registros agrupados se repetidos (TRUE) ou não
+   * @return int Número de registros total/filtrados
+   * @throws \Djck\CoreException
+   */
   public function select($fields=array(), $distinct=false) {
     if ($distinct) {
       throw new \Djck\CoreException('$distinct não suportado para Mapper');
     }
     // TODO: selecionar por $fields
     
-    $order = $this->order;
     $where = $this->filters;
     if (!$where) $where = array();
+    
+    // order by no mapper puro, suporte apenas pra 1 campo
+    $order = reset($this->order);
+    $this->sort($order);
     
     // só pega registros não deletados, se a tabela foi configurada para tal
     /*if ($this->permanent_delete !== true) {
@@ -377,7 +459,7 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
    * $mapper->update(); // vai alterar todos os registros em que 'campo' for maior que 10
    * </code>
    * 
-   * @return int
+   * @return int Número de registros que foram efetivamente alterados
    */
   public function update() {
     
@@ -436,11 +518,93 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
   }
   
   /**
+   * Insere os novos registros na persistencia do Mapper.
+   * 
+   * Observações:
+   * - Num mapper temporário, esse método é apenas "informativo", pois os registros
+   * que são inseridos com push(), em teoria, já estão na persistencia do mapper, que
+   * é o $result. 
+   * 
+   * @return int Número de registros que foram efetivamente inseridos
+   */
+  public function insert() {
+    
+    $affected = 0;
+    foreach ($this->result as $i => $_) {
+      if ($this->result[$i]['flag'] === self::FRESH) {
+        ++$affected;
+        //$this->result[$i]['flags'] = self::PERSISTED;
+        // tive que mudar pq o PHP 5.3 não suporta a sintaxe acima com offsetGet passado por referencia direto
+        // funções passadas por referencia requerem o & nos dois lugares
+        // ver: http://www.php.net/manual/en/language.references.return.php
+        $result = &$this->result->offsetGet( $i );
+        //$result['data'] = $data;
+        $result['flag'] = self::PERSISTED;
+      }
+    }
+    
+    return $affected;
+  }
+  
+  public function delete() {
+    
+    $where = $this->filters;
+    if (!$where) $where = array();
+    
+    // primeiro tenta ver se tem id para alterar
+    if (empty($where) && ($id = $this->getPointerValue())) {
+      
+      if ($this->remove($id)) {
+        // se for id, deleta só 1 registro
+        return 1;
+      }
+    }
+    
+    // se não tiver nenhum filtro, não fazer update
+    $has_filter = count($where) > 0;
+    if (!$has_filter) {
+      return 0;
+    }
+    
+    // só pega registros não deletados, se a tabela foi configurada para tal
+    /*if ($this->permanent_delete !== true) {
+      $where[] = new query\Criteria(new query\Field(self::DEFAULT_DELETE_NAME), '=', '0');
+    }*/
+    $num_rows = $this->_filterResult($where);
+    
+    $affected = 0;
+    $updated_values = $this->_getUpdatedValues(); // só valores que foram alterados
+    
+    foreach ($this->_filtered_result as $i => $_) {
+      if ($i < 0) {
+        continue; // ignora -1
+      }
+      $this->get($i);
+      foreach ($updated_values as $field => $val) {
+        // altera cada campo que foi alterado
+        $this[$field] = $val;
+      }
+      $this->refresh();
+      ++$affected;
+    }
+    
+    // reseta ponteiro
+    $this->first();
+    
+    if ($affected) {
+      $this->saveState();
+    }
+
+    return $affected;
+  }
+  
+  /**
    * Limpa os dados do registro atual. Não modifica o result.
    * @return void
    */
   public function nullset() {
-    $this->data = null;
+    //$this->data = null;
+    $this->_setData($this->data, null);
     $this->saveState(); // pristine
     $this->pointer = array($this->getPointer() => null);
     // se o registro atual é apagado, o ponteiro interno deve apontar pra algo que nao exista
@@ -469,7 +633,7 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
     $id = $this->getPointer();
     $values = array_change_key_case($data, CASE_LOWER);
     
-    $this->data = $values;
+    $this->_setData($this->data, $values);
     $this->saveState();
     $this->pointer = array($id => $data[$id]);
   }
@@ -690,12 +854,22 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
     if ($data === null) return;
     
     if (isset($this->result[ $this->internal_pointer ]) && $data[$this->getPointer()]) {
-      //$this->result[ $this->internal_pointer ]['data'] = $data;
+      foreach ($data as &$val) {
+        if ($val instanceof query\Expression) {
+          // se o valor for uma expressao, usar o valor do prestine como referencia
+          // para executar a expressao
+          $val = $this->_evalMathExpression($this->_pristine_data, $val);
+        }
+      }
+      unset($val);
+      
+      //$this->_setData($this->result[ $this->internal_pointer ]['data'], $data);
       // tive que mudar pq o PHP 5.3 não suporta a sintaxe acima com offsetGet passado por referencia direto
       // funções passadas por referencia requerem o & nos dois lugares
       // ver: http://www.php.net/manual/en/language.references.return.php
       $result = &$this->result->offsetGet( $this->internal_pointer );
-      $result['data'] = $data;
+      //$result['data'] = $data;
+      $this->_setData($result['data'], $data);
     }
   }
   
@@ -729,6 +903,11 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
     if (!isset($column))
       $column = $this->getPointer();
     
+    if ($column instanceof query\Field) {
+      $desc = $column->getOrder();
+      $column = $column->getAlias();
+    }
+    
     $this->_quicksort($this->result, $column, 0, $this->count-1, $desc === true || strtolower($desc) === 'desc');
     return true;
   }
@@ -750,15 +929,59 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
     return $this->entity;
   }
   
+  /**
+   * Retorna o campo definido do registro.
+   * 
+   * Atenção! Este método pode resetar o ponteiro interno do result!
+   * 
+   * @param string $name Nome/alias do campo
+   * @return \Djck\database\query\Field
+   */
   public function getField($name) {
-    return new query\Field($name);
+    // sanitize
+    $field = strtolower($name);
+    
+    // procura pelos campos reais (Field)
+    if (isset($this->fields[$field])) {
+      return $this->fields[$field];
+    }
+    
+    // procura pelos campos definidos na entity (Field)
+    if ($this->entity instanceof query\base\EntityBase) {
+      $fieldobj = $this->entity->getField($field);
+      if ($fieldobj) {
+        return $fieldobj;
+      }
+    }
+    
+    // por ultimo, tenta pelo data
+    $this->first(); // reseta o ponteiro (necessario caso o ponteiro interno estiver no final)
+    if (isset($this->data[$field]) || array_key_exists($field, $this->data)) {
+      return new query\Field($field);
+    }
   }
   
-  public function setFields() {
-    
+  /**
+   * Define os campos dos registros. Nos arquivos servirão de cabeçalho. Nos outros formatos
+   * como json ou xml, serão propriedades
+   * (É protected pois não é possivel alterar os campos em tempo de execução, só ao criar a
+   * instancia __construct)
+   * @param \Djck\database\query\Field[] $entity
+   * @access protected
+   */
+  public function setFields($fields) {
+    $this->fields = array();
+    $this->_fields_array = array();
+    foreach ($fields as $f) {
+      $this->fields[$f->getHash()] = $f;
+      $this->_fields_array[$f->getHash()] = null;
+    }
   }
   
   public function getFields() {
+    if ($this->fields) {
+      return $this->fields;
+    }
     return array_keys($this->data);
   }
   
@@ -768,6 +991,9 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
    * @param mixed $initval Se definido, o id (pointer) do registro atual sera iniciado já com este valor
    */
   public function setPointer($pointer, $initval = null) {
+    if ($pointer instanceof query\base\HasAlias) {
+      $pointer = $pointer->getAlias();
+    }
     $this->pointer = array($pointer => $initval);
   }
   
@@ -787,6 +1013,12 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
     return reset($this->pointer);
   }
   
+  /**
+   * Define um filtro para os dados.
+   * 
+   * @param \Djck\database\query\ExpressionBase[] $exprs Array de expressões
+   * @throws ModelException
+   */
   public function setFilter($exprs) {
     if (!is_array($exprs)) return;
     
@@ -801,8 +1033,50 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
     }
   }
   
+  /**
+   * Retorna as expressões de filtro definidas do mapper.
+   * 
+   * @return \Djck\database\query\ExpressionBase[]
+   */
   public function getFilter() {
     return $this->filters;
+  }
+  
+  public function setOrderBy($orders) {
+    if (!is_array($orders) || empty($orders)) return false;
+    
+    $this->order = array();
+    foreach ($orders as $o) {
+      $direction = null;
+      if (is_array($o)) {
+        $direction = $o[1];
+        $o = $o[0];
+      }
+      if ($o instanceof query\base\Ordenable) {
+        if ($direction) $o->setOrder($direction);
+      } else {
+        throw new ModelException('A ordenação deve ser um objeto ordenavel.');
+      }
+      $this->order[] = $o;
+    }
+  }
+  
+  public function getOrderBy() {
+    return $this->order;
+  }
+  
+  public function setOffset($offset) {
+    if ($offset < 0) $offset = 0;
+    $this->offset = $offset;
+  }
+  
+  public function setStart($offset) {
+    $this->setOffset($offset);
+  }
+  
+  public function setLimit($limit) {
+    if ($limit < 0) $limit = 0;
+    $this->limit = $limit;
   }
   
   /**
@@ -872,6 +1146,18 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
     return $fields;
   }
   
+  protected function _setData(&$prop, $data) {
+    if (!empty($this->_fields_array)) {
+      if (is_null($data)) {
+        $prop = $this->_fields_array;
+      } else {
+        $prop = $this->_diff($this->_fields_array, $data);
+      }
+    } else {
+      $prop = $data;
+    }
+  }
+  
   /**
    * Retorna o número de registros do result
    * @return integer
@@ -888,11 +1174,7 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
    * - Filtro atual (alguns mappers)
    */
   public function __get($name) {
-    // sanitize
-    $field = strtolower($name);
-    if (isset($this->data[$field])) {
-      return $field;
-    }
+    return $this->getField($name);
   }
   
   // --------------------- INICIO DOS METODOS DE ACESSO POR ARRAY ----
@@ -946,7 +1228,7 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
       /*if (!isset($data[ $offset ]))
         throw new ModelException('Campo '.$offset.' não existe');*/
       
-      return $data[ $offset ];
+      $val = $data[ $offset ];
       
     } else {
       // sanitize
@@ -955,8 +1237,16 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
       /*if (!isset($this->data[ $offset ]))
         throw new ModelException('Campo '.$offset.' não existe');*/
       
-      return $this->data[ $offset ];
+      $val = $this->data[ $offset ];
     }
+    
+    if ($val instanceof query\Expression) {
+      // se o valor for uma expressao, usar o valor do prestine como referencia
+      // para executar a expressao
+      $val = $this->_evalMathExpression($this->_pristine_data, $val);
+    }
+    
+    return $val;
   }
   
   

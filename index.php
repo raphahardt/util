@@ -5,32 +5,49 @@ namespace Djck;
 require 'core/bootstrap.php';
 
 $mapper = new mvc\mappers\TempMapper();
-for($i=0;$i<50;$i++) {
+//$mapper->setFields(array(new database\query\Field('coluna'), new database\query\Field('coluna2'), new database\query\Field('coluna4')));
+for($i=0;$i<49;$i++) {
   $mapper->push(array(
       'coluna' => $i * 100, 
-      'coluna2' => rand(0, 900)
+      'coluna2' => $i
   ));
 }
-$mapper->setFilter(array(new database\query\Criteria(new database\query\Field('coluna'), '>=', 2000),
-        new database\query\Criteria(new database\query\Field('coluna'), '<=', 3000)));
+dump($mapper->insert());
+$mapper->push(array(
+    'coluna' => $i * 100, 
+    'coluna2' => $i
+));
+dump($mapper->insert());
+
+$mapper->setOrderBy(array(array($mapper->coluna2, 'desc')));
+$mapper->setFilter(array(new database\query\Criteria($mapper->coluna, '>=', 2000),
+        new database\query\Criteria($mapper->coluna, '<=', 3000)));
 dump($mapper->select());
 
-$mapper->get(25);
+//$mapper->get(25);
 
-$mapper['coluna2'] = 'aaa';
+$mapper['coluna2'] = new database\query\Expression('+', new database\query\Expression('+', $mapper->coluna, $mapper->coluna2), 1000000);
 
 dump($mapper->update());
 
-/*$mapper->setFilter(array(new database\query\Criteria(new database\query\Field('coluna'), '>', 1000),
-        new database\query\Criteria(new database\query\Field('coluna'), '<=', 4000)));
 
-dump($mapper->select());*/
+$mapper->setFilter(array(new database\query\Criteria($mapper->coluna, '>', 1000),
+        new database\query\Criteria($mapper->coluna, '<=', 4000)));
+
+dump($mapper->select());
 
 $count =0;
 $mapper->first();
 do {
   echo ++$count , '>', $mapper['coluna'].' - '.$mapper['coluna2'].'<br>';
 } while ($mapper->next());
+
+$mapper->first();
+$mapper['coluna2'] = new database\query\Expression('+', new database\query\Expression('+', $mapper->coluna, $mapper->coluna2), 10000000);
+//$mapper->refresh();
+$mapper->next();
+$mapper->prev();
+dump($mapper['coluna2']);
 
 dump($mapper);
 
