@@ -14,7 +14,7 @@ Core::uses('FieldBase', 'Djck\database\query\base');
  */
 class Field
 extends base\FieldBase
-implements base\Expressee {
+implements interfaces\Expressee {
   
   private $name;
   private $strictName = false;

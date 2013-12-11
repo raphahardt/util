@@ -4,6 +4,8 @@ namespace Djck;
 
 require 'core/bootstrap.php';
 
+Core::dump();
+
 $mapper = new mvc\mappers\TempMapper();
 //$mapper->setFields(array(new database\query\Field('coluna'), new database\query\Field('coluna2'), new database\query\Field('coluna4')));
 for($i=0;$i<49;$i++) {

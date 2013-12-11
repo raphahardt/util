@@ -13,8 +13,8 @@ Core::uses('ExpressionBase', 'Djck\database\query\base');
  */
 class Expression 
 extends base\ExpressionBase 
-implements base\HasAlias, base\HasOperator, 
-        base\HasFunction, base\Ordenable {
+implements interfaces\HasAlias, interfaces\HasOperator, 
+        interfaces\HasFunction, interfaces\Ordenable {
   
   protected $expressees = array();
   protected $functions = array();
@@ -29,14 +29,14 @@ implements base\HasAlias, base\HasOperator,
    * @param string|base\Expressee $alias Alias para expressão (opcional)
    * @param base\Expressee $expr Uma ou mais subexpressões que serão ligadas pelo operador
    * @param base\Expressee $expr2 ... 
-   * @throws base\QueryException
+   * @throws exceptions\QueryException
    */
   public function __construct($operator, $alias = null, $expr = null) {
     $args = func_get_args();
     
     // validando operador
     if (!is_string($operator)) {
-      throw new base\QueryException('Defina um operador para a expressão');
+      throw new exceptions\QueryException('Defina um operador para a expressão');
     }
     // primeiro definir o alias, para gerar o hash corretamente
     if (!($alias instanceof base\Expressee) && !is_array($alias)) {
@@ -63,7 +63,7 @@ implements base\HasAlias, base\HasOperator,
    * 
    * @param base\Expressee|scalar $expr Uma ou mais subexpressões a serem adicionadas
    * @param base\Expressee|scalar $expr2 ...
-   * @throws base\QueryException
+   * @throws exceptions\QueryException
    */
   public function add($expr, $expr_ = null) {
     if (is_array($expr) && func_num_args() === 1) {
@@ -74,15 +74,15 @@ implements base\HasAlias, base\HasOperator,
     
     foreach ($expressions as $expression) {
       if ($expression instanceof base\Base) {
-        if (!($expression instanceof base\Expressee)) {
-          throw new base\QueryException('O método '.__METHOD__.' só aceita ISQLExpressions'.
+        if (!($expression instanceof interfaces\Expressee)) {
+          throw new exceptions\QueryException('O método '.__METHOD__.' só aceita ISQLExpressions'.
                                 ' ou tipos comuns (string, int...) como parametro');
         }
         
         // se a expressao que estiver adicionando for o mesmo que o objeto instanciado,
         // não adicionar, pois irá gerar recursão e entrar em loop infinito
         if ($expression instanceof Expression && $expression === $this) {
-          throw new base\QueryException('Você não pode colocar como subexpressão a própria '.
+          throw new exceptions\QueryException('Você não pode colocar como subexpressão a própria '.
                                   'instancia de expressão');
         }
         

@@ -3,6 +3,7 @@
 namespace Djck\database\query\base;
 
 use Djck\Core;
+use Djck\database\query\interfaces;
 
 Core::uses('Base', 'Djck\database\query\base');
 
@@ -11,7 +12,7 @@ Core::uses('Base', 'Djck\database\query\base');
  *
  * @author Rapha e Dani
  */
-abstract class EntityBase extends Base implements HasAlias {
+abstract class EntityBase extends Base implements interfaces\HasAlias {
   
   protected $alias = null;
   

@@ -13,8 +13,8 @@ Core::uses('InstructionBase', 'Djck\database\query\base');
  */
 class ISelect
 extends base\InstructionBase 
-implements base\HasAlias, base\Ordenable, base\HasFunction, 
-        base\Expressee, base\InSelect{
+implements interfaces\HasAlias, interfaces\Ordenable, interfaces\HasFunction, 
+        interfaces\Expressee, interfaces\InSelect {
   
   private $alias;
   private $fields = array();

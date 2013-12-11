@@ -318,10 +318,18 @@ abstract class Core {
     $original_package = $package; // tenho que guardar a pasta correta pois $package será alterado por referencia
     $parsed = self::path($package);
     
-    foreach (glob($parsed.DS.'*.php') as $file) {
-      // pega o nome da classe
-      $class = str_replace(array('.class.php','.php'), '', basename($file));
-      Core::import($class, $original_package);
+    if (is_file($parsed.DS.'_load.php')) {
+      
+      // inclue o arquivo que configura o pacote
+      include_once $parsed.DS.'_load.php';
+      
+    } else {
+    
+      foreach (glob($parsed.DS.'*.php') as $file) {
+        // pega o nome da classe
+        $class = str_replace(array('.class.php','.php'), '', basename($file));
+        Core::import($class, $original_package);
+      }
     }
   }
   

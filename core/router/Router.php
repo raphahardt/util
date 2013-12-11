@@ -3,14 +3,12 @@
 namespace Djck\router;
 
 use Djck\Core;
-use Djck\CoreException;
+
+Core::usesPackage('Djck\router\exceptions');
 
 /**
  * Baseado no AutoRouter https://github.com/dannyvankooten/AltoRouter
  */
-
-class RouterException extends CoreException {}
-
 class Router {
 
   /**
@@ -61,7 +59,7 @@ class Router {
 
     if ($name) {
       if (isset($this->namedRoutes[$name])) {
-        throw new RouterException("Can not redeclare route '{$name}'");
+        throw new exceptions\RouterDuplicateRouteException("Can not redeclare route '{$name}'");
       } else {
         $this->namedRoutes[$name] = array(
             'route' => $route,
@@ -86,7 +84,7 @@ class Router {
 
     // Check if named route exists
     if (!isset($this->namedRoutes[$routeName])) {
-      throw new RouterException("Route '{$routeName}' does not exist.");
+      throw new exceptions\RouterNotFoundException("Route '{$routeName}' does not exist.");
     }
 
     // Replace named parameters
@@ -123,7 +121,7 @@ class Router {
     
     // se sobrou parametros sem passar, jogar erro
     if (($c = count($matches)) > 0) {
-      throw new RouterException("$c params left in '{$routeName}' route.");
+      throw new exceptions\RouterMissingParamsException("$c params left in '{$routeName}' route.");
     }
     
     // completa a url com os parametros que sobraram, e passa via get
@@ -153,7 +151,7 @@ class Router {
   public function getParams($routeName) {
     // Check if named route exists
     if (!isset($this->namedRoutes[$routeName])) {
-      throw new RouterException("Route '{$routeName}' does not exist.");
+      throw new exceptions\RouterNotFoundException("Route '{$routeName}' does not exist.");
     }
 
     // Replace named parameters
@@ -223,7 +221,7 @@ class Router {
         unset($url, $method, $class);
         // se ainda sim não vier um array, o controller não foi definido corretamente
         if (!is_array($target)) {
-          throw new RouterException('Rota '.$target.' não foi definida corretamente.'.
+          throw new exceptions\RouterInvalidTargetException('Rota '.$target.' não foi definida corretamente.'.
                   'Verifique se ela está sendo linkada com uma rota que não tenha nome ou controller definido');
         }
       }

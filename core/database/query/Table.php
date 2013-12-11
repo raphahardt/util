@@ -47,7 +47,7 @@ extends base\EntityBase {
     } elseif (is_string($name)) {
       $field = new Field($name, $alias, $type);
     } else {
-      throw new base\QueryException('O método '.__METHOD__.' só aceita Field como parâmetro');
+      throw new exceptions\QueryException('O método '.__METHOD__.' só aceita Field como parâmetro');
     }
     
     // define quem é o pai do campo

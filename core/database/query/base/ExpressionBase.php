@@ -3,6 +3,8 @@
 namespace Djck\database\query\base;
 
 use Djck\Core;
+use Djck\database\query\exceptions;
+use Djck\database\query\interfaces;
 
 Core::uses('Base', 'Djck\database\query\base');
 
@@ -11,7 +13,9 @@ Core::uses('Base', 'Djck\database\query\base');
  *
  * @author Rapha e Dani
  */
-abstract class ExpressionBase extends Base implements Negable, HasOperator, Expressee {
+abstract class ExpressionBase 
+extends Base 
+implements interfaces\Negable, interfaces\HasOperator, interfaces\Expressee {
   
   protected $operator;
   protected $negate = false;
@@ -44,7 +48,7 @@ abstract class ExpressionBase extends Base implements Negable, HasOperator, Expr
       return $operator;
     }
     
-    throw new QueryException('Operador "'.$operator.'" inválido');
+    throw new exceptions\QueryException('Operador "'.$operator.'" inválido');
   }
   
 }

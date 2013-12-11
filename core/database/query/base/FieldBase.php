@@ -3,6 +3,7 @@
 namespace Djck\database\query\base;
 
 use Djck\Core;
+use Djck\database\query\interfaces;
 
 Core::uses('Base', 'Djck\database\query\base');
 
@@ -11,7 +12,10 @@ Core::uses('Base', 'Djck\database\query\base');
  *
  * @author Rapha e Dani
  */
-abstract class FieldBase extends Base implements HasAlias, Ordenable, HasFunction, InSelect {
+abstract class FieldBase 
+extends Base 
+implements interfaces\HasAlias, interfaces\Ordenable, 
+        interfaces\HasFunction, interfaces\InSelect {
   
   protected $alias = null;
   protected $orderDesc = false;

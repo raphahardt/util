@@ -11,43 +11,7 @@ use Djck\database\query;
 Core::registerPackage('Djck\mvc:model\mappers');
 
 // interfaces /////////////////////////////////////
-/**
- * Interface que define todos os Mappers. É o padrão.
- */
-interface DefaultMapperInterface {
-  public function init();
-  public function commit();
-  public function rollback();
-}
-/**
- * Interface que define todos os Mappers que tem ligação com banco de dados.
- * Ela contem mais 4 métodos para a conversação correta com os dados: select, update,
- * delete e insert. Os Behaviors irão verificar se o Mapper implementa essa interface
- * e utilizar os metodos corretos em cada momento.
- */
-interface DatabaseMapperInterface extends DefaultMapperInterface {
-  public function select();
-  public function update();
-  public function delete();
-  public function insert();
-}
-/**
- * Interface que define todos os Mappers que escrevem em arquivos.
- * Ela contem mais um método destroy() que apaga o arquivo.
- */
-interface FileMapperInterface extends DefaultMapperInterface {
-  public function destroy();
-}
-/**
- * Interface que define todos os Mappers que precisam manipular seus dados de forma
- * aninhada. Por exemplo, os xmls.
- * Ela tem mais alguns metodos essenciais para essa manipulação. Os Behaviors irão 
- * verificar se o Mapper implementa essa interface
- * e utilizar os metodos corretos em cada momento.
- */
-interface NestedMapperInterface extends DefaultMapperInterface {
-  // addnode, removenode, etc...
-}
+Core::usesPackage('Djck\mvc:model\interfaces');
 
 abstract class MapperBase extends AbstractObject {
   
@@ -1036,7 +1000,7 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
   /**
    * Retorna as expressões de filtro definidas do mapper.
    * 
-   * @return \Djck\database\query\ExpressionBase[]
+   * @return \Djck\database\query\base\ExpressionBase[]
    */
   public function getFilter() {
     return $this->filters;
@@ -1052,7 +1016,7 @@ abstract class Mapper extends MapperBase implements \ArrayAccess {
         $direction = $o[1];
         $o = $o[0];
       }
-      if ($o instanceof query\base\Ordenable) {
+      if ($o instanceof query\interfaces\Ordenable) {
         if ($direction) $o->setOrder($direction);
       } else {
         throw new ModelException('A ordenação deve ser um objeto ordenavel.');
