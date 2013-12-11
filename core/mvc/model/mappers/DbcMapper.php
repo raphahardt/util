@@ -8,7 +8,7 @@ use Djck\database\Dbc;
 use Djck\database\query;
 
 use Djck\mvc\Mapper;
-use Djck\mvc\DatabaseMapperInterface;
+use Djck\mvc\interfaces;
 
 use Djck\types;
 
@@ -20,7 +20,7 @@ use Djck\types;
 // faz com que a persistencia do mapper seja no banco de dados
 // depends: SQLBase, Dbc
 // aguenta mais ou menos 4000~ instancias criadas
-class DbcMapper extends Mapper implements DatabaseMapperInterface {
+class DbcMapper extends Mapper implements interfaces\DatabaseMapper {
   
   const DEFAULT_ID_NAME = 'id';
   const DEFAULT_DELETE_NAME = 'excluido';

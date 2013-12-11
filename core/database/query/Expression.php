@@ -39,7 +39,7 @@ implements interfaces\HasAlias, interfaces\HasOperator,
       throw new exceptions\QueryException('Defina um operador para a expressão');
     }
     // primeiro definir o alias, para gerar o hash corretamente
-    if (!($alias instanceof base\Expressee) && !is_array($alias)) {
+    if (!($alias instanceof base\Expressee) && is_string($alias)) {
       $this->alias = $alias;
       if ($alias !== null) {
         unset($args[1]);

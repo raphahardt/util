@@ -4,7 +4,7 @@ namespace Djck\router;
 
 use Djck\Core;
 
-Core::usesPackage('Djck\router\exceptions');
+Core::registerPackage('Djck\router\exceptions');
 
 /**
  * Baseado no AutoRouter https://github.com/dannyvankooten/AltoRouter

@@ -4,7 +4,14 @@ namespace Djck;
 
 require 'core/bootstrap.php';
 
-Core::dump();
+database\DbcConfig::set('aaa', array(
+  '#host'     => 'localhost',
+  '#user'     => 'root',
+  '#password' => '',
+  '#schema'   => 'fastmotors'
+));
+
+$bd = database\Dbc::getInstance('aaa');
 
 $mapper = new mvc\mappers\TempMapper();
 //$mapper->setFields(array(new database\query\Field('coluna'), new database\query\Field('coluna2'), new database\query\Field('coluna4')));
@@ -28,7 +35,8 @@ dump($mapper->select());
 
 //$mapper->get(25);
 
-$mapper['coluna2'] = new database\query\Expression('+', new database\query\Expression('+', $mapper->coluna, $mapper->coluna2), 1000000);
+//$mapper['coluna2'] = new database\query\Expression('+', new database\query\Expression('+', $mapper->coluna, $mapper->coluna2), 1000000);
+$mapper['coluna2'] = new database\query\Expression('+', new database\query\Expression('+', $mapper->coluna, $mapper->coluna2, 1), 1000000);
 
 dump($mapper->update());
 
@@ -46,7 +54,7 @@ do {
 
 $mapper->first();
 $mapper['coluna2'] = new database\query\Expression('+', new database\query\Expression('+', $mapper->coluna, $mapper->coluna2), 10000000);
-//$mapper->refresh();
+$mapper->refresh();
 $mapper->next();
 $mapper->prev();
 dump($mapper['coluna2']);

@@ -3,10 +3,10 @@
 namespace Djck\mvc\mappers;
 
 use Djck\mvc\Mapper;
-use Djck\mvc\NestedMapperInterface;
+use Djck\mvc\interfaces;
 
 // persistencia do mapper em xml
-class XmlMapper extends Mapper implements NestedMapperInterface {
+class XmlMapper extends Mapper implements interfaces\NestedMapper {
   public function init() {
     
   }  

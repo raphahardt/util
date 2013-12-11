@@ -3,11 +3,10 @@
 namespace Djck\database;
 
 use Djck\Core;
-use Djck\CoreException;
 use Djck\database\DbcConfig;
 use Djck\system\AbstractSingleton;
 
-class DbcException extends CoreException {}
+Core::registerPackage('Djck\database:dbc\exceptions');
 
 class Dbc extends AbstractSingleton {
 
@@ -23,15 +22,17 @@ class Dbc extends AbstractSingleton {
   private $stmt_query = array();
   private $stmt_index = 0;
   //result
-  private $result = array();
-  private $result_index = 0;
-  protected $con = false; // resource de conexao
+  /**
+   * Objeto de conexão com banco.
+   * 
+   * @var \mysqli 
+   */
+  protected $con = null; // resource de conexao
   protected $schema;
-  private $_warnings = array();
-  //private static $_instances = array();
   
   /**
    * Construtor da DB: cria uma nova conexão
+   * 
    * @author Raphael Hardt
    * @param string $config Nome da configuração de conexão. Padrão: 'default'
    */
@@ -45,21 +46,24 @@ class Dbc extends AbstractSingleton {
     $config_params = DbcConfig::get($config);
     
     // faz uma conexão com o banco de dados
-    $this->con = mysqli_connect($config_params['#host'], 
+    $this->con = mysqli_init();
+    $this->con->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, 1);
+    if ( !$this->con->real_connect($config_params['#host'], 
             $config_params['#user'], 
             $config_params['#password'], 
-            $config_params['#schema'], $config_params['#port']);
-    
-    if (mysqli_connect_error()) {
+            $config_params['#schema'], $config_params['#port']) ) {
       // erro de conexão
-      throw new DbcException(mysqli_connect_errno() . ': ' . mysqli_connect_error());
+      throw new exceptions\DbcFailedConnectionException($this->con->connect_error, $this->con->connect_errno);
     }
 
     // define o nome do banco da conexao
     $this->schema = strtoupper($config_params['#schema']);
 
     // define o charset utilizado
-    mysqli_set_charset($this->con, $config_params['#charset']);
+    if (!$this->con->set_charset($config_params['#charset'])) {
+      // erro de charset
+      throw new exceptions\DbcFailedExecuteException($this->con->error, $this->con->errno);
+    }
     $this->charset = $config_params['#charset'];
 
     // limpa variaveis internas 
@@ -122,7 +126,7 @@ class Dbc extends AbstractSingleton {
    */
   public function close() {
     if ($this->con)
-      mysqli_close($this->con);
+      $this->con->close();
   }
 
   /**
@@ -159,7 +163,7 @@ class Dbc extends AbstractSingleton {
   public function autocommit($mode = null) {
     if (isset($mode)) {
       $this->autocommit = (bool) $mode;
-      mysqli_autocommit($this->con, $this->autocommit);
+      $this->con->autocommit($this->autocommit);
     } else {
       return $this->autocommit;
     }

@@ -59,7 +59,7 @@ class SingleBehavior extends Behavior {
       return $Model->uses('Collection')->select();
     }
     // se for database, faz select no banco primeiro
-    if ($Model->Mapper instanceOf \Djck\mvc\DatabaseMapperInterface) {
+    if ($Model->Mapper instanceOf \Djck\mvc\interfaces\DatabaseMapper) {
       $Model->Mapper->select();
     }
     // só atualiza o registro atual se encontrar apenas 1 registro
@@ -93,10 +93,10 @@ class SingleBehavior extends Behavior {
       //return $Model->uses('Collection')->insert();
 	  // TODO
     }
-    if ($Model->Mapper instanceOf \Djck\mvc\DatabaseMapperInterface) {
+    if ($Model->Mapper instanceOf \Djck\mvc\interfaces\DatabaseMapper) {
       //$return = $Model->Mapper->insertOne(); // TODO
       $return = $Model->Mapper->insert();
-    } elseif ($Model->Mapper instanceof \Djck\mvc\DefaultMapperInterface) {
+    } elseif ($Model->Mapper instanceof \Djck\mvc\interfaces\CommonMapper) {
       $Model->Mapper->push();
       $return = $Model->Mapper->autoCommit() ? $Model->Mapper->commit() : true;
     }
@@ -104,9 +104,9 @@ class SingleBehavior extends Behavior {
   }
   
   public function update(Model $Model) {
-    if ($Model->Mapper instanceOf \Djck\mvc\DatabaseMapperInterface) {
+    if ($Model->Mapper instanceOf \Djck\mvc\interfaces\DatabaseMapper) {
       $return = $Model->Mapper->update();
-    } elseif ($Model->Mapper instanceof \Djck\mvc\DefaultMapperInterface) {
+    } elseif ($Model->Mapper instanceof \Djck\mvc\interfaces\CommonMapper) {
       $Model->Mapper->refresh();
       $return = $Model->Mapper->autoCommit() ? $Model->Mapper->commit() : true;
     }
@@ -117,7 +117,7 @@ class SingleBehavior extends Behavior {
     // todos mappers tem essa funcao, e nos de database, ele apaga sem alterar o result,
     // diferente do delete() do dbcmapper
     $return = $Model->Mapper->remove();
-    if ($Model->Mapper instanceof \Djck\mvc\DefaultMapperInterface) {
+    if ($Model->Mapper instanceof \Djck\mvc\interfaces\CommonMapper) {
       $return && $return = $Model->Mapper->autoCommit() ? $Model->Mapper->commit() : true;
     }
     return $return;

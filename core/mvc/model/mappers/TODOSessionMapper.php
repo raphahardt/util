@@ -12,7 +12,7 @@
  * @author usuario
  */
 // persistencia do mapper em session
-class SessionMapper extends Mapper implements DefaultMapperInterface {
+/*class SessionMapper extends Mapper implements DefaultMapperInterface {
   
   static private $counter = 1;
   
@@ -51,7 +51,7 @@ class SessionMapper extends Mapper implements DefaultMapperInterface {
   /**
    * Salva as alterações dos registros na session
    * @return boolean
-   */
+   * /
   public function commit() {
     
     $output = $this->_formatOutput();
@@ -63,10 +63,10 @@ class SessionMapper extends Mapper implements DefaultMapperInterface {
   /**
    * Deleta a session (entidade)
    * @return boolen
-   */
+   * /
   public function destroy() {
     $this->clearResult();
     return true;
   }
   
-}
+}*/

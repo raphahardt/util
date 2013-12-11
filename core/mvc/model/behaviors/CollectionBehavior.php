@@ -88,7 +88,7 @@ class CollectionBehavior extends SingleBehavior {
   }
   
   public function select(Model $Model) {
-    if ($Model->Mapper instanceOf \Djck\mvc\DatabaseMapperInterface) {
+    if ($Model->Mapper instanceOf \Djck\mvc\interfaces\DatabaseMapper) {
       $Model->Mapper->select();
     }
     $Model->Mapper->first();

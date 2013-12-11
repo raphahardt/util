@@ -345,6 +345,7 @@ abstract class Core {
     $parsed = self::path($package);
     
     foreach (glob($parsed.DS.'*.php') as $file) {
+      if ($file === $parsed.DS.'_load.php') continue;
       // pega o nome da classe
       $class = str_replace(array('.class.php','.php'), '', basename($file));
       Core::uses($class, $original_package);
@@ -508,7 +509,7 @@ abstract class Core {
     }
     $severity =
             1 * E_ERROR |
-            1 * E_WARNING |
+            0 * E_WARNING |
             1 * E_PARSE |
             0 * E_NOTICE |
             1 * E_CORE_ERROR |
@@ -516,7 +517,7 @@ abstract class Core {
             1 * E_COMPILE_ERROR |
             1 * E_COMPILE_WARNING |
             1 * E_USER_ERROR |
-            1 * E_USER_WARNING |
+            0 * E_USER_WARNING |
             0 * E_USER_NOTICE |
             0 * E_STRICT |
             0 * E_RECOVERABLE_ERROR |

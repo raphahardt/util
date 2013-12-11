@@ -4,10 +4,8 @@ namespace Djck\mvc;
 
 use Djck\Core;
 use Djck\system\AbstractObject;
-use Djck\CoreException;
-use Djck\mvc\Model;
 
-class ModelException extends CoreException {}
+Core::registerPackage('Djck\mvc:model\exceptions');
 
 /**
  * Representa um modelo de dados do sistema.
@@ -26,7 +24,7 @@ class ModelException extends CoreException {}
  * @package mvc
  * @subpackage model
  * 
- * @property-read mixed $nome_do_campo Campo do Model
+ * @property mixed $nome_do_campo Campo do Model
  * @method boolean isSingle() Verifica se o Model contem o Behavior
  * @method boolean isOnlySingle() Verifica se o Model contem o Behavior
  * @method boolean isCollection() Verifica se o Model contem o Behavior
@@ -37,24 +35,23 @@ class ModelException extends CoreException {}
  * @method boolean usesCollection() Usa o Behavior
  * @method boolean usesTree() Usa o Behavior
  * 
- * 
  * @author Raphael Hardt <raphael.hardt@gmail.com>
  * @since 0.1 (24/09/2013)
- * @version 0.1 (24/09/2013)
+ * @version 0.2 (11/12/2013)
  */
 class Model extends AbstractObject implements \ArrayAccess, \Countable, \Iterator {
   
   /**
    * Instancias únicas dos Behaviors usados no momento. Models compartilham Behaviors
    * já instanciados. 
-   * @var array
+   * @var Behavior[]
    * @static
    */
   static protected $behavior_instances = array();
   
   /**
    * Behaviors do Model
-   * @var array|Behavior 
+   * @var Behavior[]
    */
   protected $behaviors = array();
   
@@ -81,7 +78,7 @@ class Model extends AbstractObject implements \ArrayAccess, \Countable, \Iterato
     
     if (!($this->Mapper instanceof Mapper)) {
       // se não for definido nenhum Mapper, usar mapper temporario
-      $this->Mapper = new TempMapper();
+      $this->Mapper = new mappers\TempMapper();
     }
     return $this;
   }
@@ -91,7 +88,7 @@ class Model extends AbstractObject implements \ArrayAccess, \Countable, \Iterato
    * Os Behaviors são independentes de Model, e apenas uma instancia é necessária
    * para ser usada por todos os models.
    * @param string $behavior Nome do Behavior
-   * @return \Behavior
+   * @return Behavior
    * @access protected
    */
   protected function instanciateBehavior($behavior) {
@@ -113,7 +110,7 @@ class Model extends AbstractObject implements \ArrayAccess, \Countable, \Iterato
   
   /**
    * Retorna o nome de todos os Behaviors do Model;
-   * @return array
+   * @return Behavior[]
    */
   public function getBehaviors() {
     return array_keys($this->behaviors);
@@ -121,7 +118,7 @@ class Model extends AbstractObject implements \ArrayAccess, \Countable, \Iterato
   
   /**
    * Define os Behaviors do Model. Substitui qualquer um que já tenha sido definido antes
-   * @param array Nomes dos behaviors que deseja definir ao Model
+   * @param Behavior[] Nomes dos behaviors que deseja definir ao Model
    */
   public function setBehaviors($behaviors) {
     foreach ((array)$behaviors as $behavior) {
@@ -131,7 +128,7 @@ class Model extends AbstractObject implements \ArrayAccess, \Countable, \Iterato
   
   /**
    * Define o Mapper de dados do Model.
-   * @param \Mapper $mapper
+   * @param Mapper $mapper
    */
   public function setMapper(Mapper $mapper) {
     $this->Mapper = $mapper;
@@ -163,12 +160,15 @@ class Model extends AbstractObject implements \ArrayAccess, \Countable, \Iterato
    * de uma faz o metodo da outra nunca ser chamada.
    * 
    * @param string $behavior Nome do Behavior que deseja utilizar, sem o sufixo.
-   * @return \Model
+   * @return Model
    * @todo tenho que fazer isso
    */
   public function uses($behavior) {
     $this->_selected_behavior = isset($this->behaviors[$behavior]) ? 
             $this->behaviors[$behavior] : false;
+    if (!$this->_selected_behavior) {
+      throw new exceptions\ModelInvalidBehaviorException("$behavior não existe no Model");
+    }
     return $this;
   }
   
@@ -191,7 +191,7 @@ class Model extends AbstractObject implements \ArrayAccess, \Countable, \Iterato
    * @param string $name Nome do método
    * @param array $arguments Argumentos passados pro método
    * @return mixed Depende do retorno do método do Behavior
-   * @throws ModelException
+   * @throws exceptions\ModelException
    */
   public function __call($name, $arguments=array()) {
     // se for a funcao magica "is" ou "isOnly"
@@ -228,7 +228,7 @@ class Model extends AbstractObject implements \ArrayAccess, \Countable, \Iterato
     }
     
     if (empty($behaviors))
-      throw new ModelException('Método '.$name.'() não existe no Model '.get_class($this));
+      throw new exceptions\ModelBadMethodCallException('Método '.$name.'() não existe no Model '.get_class($this));
     
     foreach ($behaviors as $behavior) {
       if (!method_exists($behavior, $name)) {
@@ -253,7 +253,7 @@ class Model extends AbstractObject implements \ArrayAccess, \Countable, \Iterato
           return call_user_func_array(array($behavior, $name), array_merge(array($this), $arguments));
       }
     }
-    if (!$n) throw new ModelException('Método '.$name.'() não existe no Model '.get_class($this));
+    if (!$n) throw new exceptions\ModelBadMethodCallException('Método '.$name.'() não existe no Model '.get_class($this));
   }
   
   public function getEntity() {

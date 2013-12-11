@@ -33,7 +33,7 @@ final class DbcConfig {
    * @var string
    * @access private
    */
-  static private $default_charset = 'UTF-8';
+  static private $default_charset = 'utf8';
   
   /**
    * Porta padrão para todas as conexões

@@ -5,7 +5,7 @@ namespace Djck\mvc\mappers;
 use Djck\CoreException;
 
 use Djck\mvc\Mapper;
-use Djck\mvc\FileMapperInterface;
+use Djck\mvc\interfaces;
 
 /**
  * Description of FileMapper
@@ -14,7 +14,7 @@ use Djck\mvc\FileMapperInterface;
  */
 // persistencia do mapper em arquivo
 // collection: ~16.000 (20 campos)
-class FileMapper extends Mapper implements FileMapperInterface {
+class FileMapper extends Mapper implements interfaces\FileSystemMapper {
   
   const DEFAULT_ID_NAME = 'id';
   const DEFAULT_DELETE_NAME = 'exc';

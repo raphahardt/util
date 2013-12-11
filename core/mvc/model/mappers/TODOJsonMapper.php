@@ -8,14 +8,14 @@
 //Core::depends('FileMapper');
 
 /**
- * Description of FileBase64Mapper
+ * Description of JsonMapper
  *
  * @author usuario
  */
-class FileBase64Mapper extends FileMapper {
-  
+/*class JsonMapper extends FileMapper {
+
   protected function _formatInput($input) {
-    $input = unserialize(base64_decode($input, true));
+    $input = json_decode($input, true);
     
     $this->clearResult();
     foreach ($input as $data) {
@@ -29,7 +29,7 @@ class FileBase64Mapper extends FileMapper {
     foreach ($this->result as $r) {
       $output[] = $r['data'];
     }
-    return base64_encode(serialize($output));
+    return json($output);
   }
   
-}
+}*/

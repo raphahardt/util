@@ -3,12 +3,16 @@
 namespace Djck\session;
 
 use Djck\Core;
-use Djck\CoreException;
 use Djck\cookie\Cookie;
 
-class SessionException extends CoreException {}
+Core::registerPackage('Djck\session\exceptions');
 
-abstract class SessionCommon implements \ArrayAccess, \Countable {
+/**
+ * Handler de sessions.
+ * 
+ * @author Raphael Hardt
+ */
+abstract class SessionBuilder implements \ArrayAccess, \Countable {
   
   private $reserved_names = array(
       SESSION_USER_NAME => 1, SESSION_TOKEN_NAME => 1, 'id' => 1, 'logged' => 1
@@ -185,7 +189,7 @@ abstract class SessionCommon implements \ArrayAccess, \Countable {
 
   public function offsetGet($offset) {
     if (isset($this->reserved_names[$offset])) {
-      throw new SessionException('Nome de session reservada do sistema, não é possível buscar '.
+      throw new exceptions\SessionReservedNameException('Nome de session reservada do sistema, não é possível buscar '.
               'seu valor diretamente.');
     }
     return $_SESSION[$offset];
@@ -193,14 +197,14 @@ abstract class SessionCommon implements \ArrayAccess, \Countable {
 
   public function offsetSet($offset, $value) {
     if (isset($this->reserved_names[$offset])) {
-      throw new SessionException('Nome de session reservada do sistema, não sobrescrever');
+      throw new exceptions\SessionReservedNameException('Nome de session reservada do sistema, não sobrescrever');
     }
     $_SESSION[$offset] = $value;
   }
 
   public function offsetUnset($offset) {
     if (isset($this->reserved_names[$offset])) {
-      throw new SessionException('Nome de session reservada do sistema, não destruir');
+      throw new exceptions\SessionReservedNameException('Nome de session reservada do sistema, não destruir');
     }
     unset($_SESSION[$offset]);
   }

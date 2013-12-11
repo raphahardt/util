@@ -3,11 +3,11 @@
 namespace Djck\session;
 
 use Djck\Core;
-use Djck\session\SessionCommon;
+use Djck\session\SessionBuilder;
 
-Core::uses('SessionCommon', 'Djck\session');
+Core::uses('SessionBuilder', 'Djck\session');
 
-class SessionFile extends SessionCommon {
+class SessionFile extends SessionBuilder {
   
   private $savePath;
   

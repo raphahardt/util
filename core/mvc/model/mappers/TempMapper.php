@@ -3,7 +3,7 @@
 namespace Djck\mvc\mappers;
 
 use Djck\mvc\Mapper;
-use Djck\mvc\DefaultMapperInterface;
+use Djck\mvc\interfaces;
 
 /*
  * To change this template, choose Tools | Templates
@@ -15,7 +15,7 @@ use Djck\mvc\DefaultMapperInterface;
  *
  * @author usuario
  */
-class TempMapper extends Mapper implements DefaultMapperInterface {
+class TempMapper extends Mapper implements interfaces\CommonMapper {
   public function init() {
     
   }  

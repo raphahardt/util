@@ -5,11 +5,11 @@ namespace Djck\session;
 use Djck\Core;
 use Djck\database\Dbc;
 use Djck\network\Request; // pra saber ip visitante
-use Djck\session\SessionCommon;
+use Djck\session\SessionBuilder;
 
-Core::uses('SessionCommon', 'Djck\session');
+Core::uses('SessionBuilder', 'Djck\session');
 
-class SessionDbc extends SessionCommon {
+class SessionDbc extends SessionBuilder {
   
   public $table_name = 'core_session';
   
@@ -51,7 +51,8 @@ class SessionDbc extends SessionCommon {
     $uid = (is_object($user) && $user->id) ? $user->id : 0;
     
     $dbc = Dbc::getInstance();
-    $dbc->prepare('insert into '.$this->table_name.' (id,sid,ip,timestamp,sessao) values (?,?,?,?,?) on duplicate key update id=?, timestamp=?,sessao=?');
+    $dbc->prepare('insert into '.$this->table_name.' (id,sid,ip,timestamp,sessao) '
+            . 'values (?,?,?,?,?) on duplicate key update id=?, timestamp=?,sessao=?');
     // insert
     $dbc->bind_param(0,$uid);
     $dbc->bind_param(1,$sid);
