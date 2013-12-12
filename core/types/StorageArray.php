@@ -509,7 +509,17 @@ class StorageArray extends \ArrayIterator/* implements \ArrayAccess, \Countable,
    * @access private
    */
   protected function setCache() {
-    file_put_contents($this->path.$this->offset, serialize($this->storage));
+    $file = new File($this->path.$this->offset, 'w');
+    if ($file->flock(LOCK_EX)) { // do an exclusive lock
+      $file->ftruncate(0);     // truncate file
+      $file->fwrite(serialize($this->storage));
+      $file->flock(LOCK_UN);   // release the lock    
+      $file = null; // close
+    } else {
+      throw new \RuntimeException('StorageArray não conseguiu o lock exclusivo '
+              . 'do arquivo temp (offset '.$this->offset.')');
+    }
+    //file_put_contents($this->path.$this->offset, serialize($this->storage));
   }
   
   /**
@@ -521,7 +531,22 @@ class StorageArray extends \ArrayIterator/* implements \ArrayAccess, \Countable,
       $this->storage = array();
       return;
     }
-    $this->storage = unserialize(file_get_contents($this->path.$this->offset));
+    $file = new File($this->path.$this->offset, 'r');
+    if ($file->flock(LOCK_SH)) { // do a shared lock
+      $contents = '';
+      while (!$file->eof()) {
+        $contents .= $file->fgets();
+      }
+      
+      $this->storage = unserialize($contents);
+      
+      $file->flock(LOCK_UN);   // release the lock    
+      $file = null; // close
+    } else {
+      throw new \RuntimeException('StorageArray não conseguiu o lock compartilhado '
+              . 'do arquivo temp (offset '.$this->offset.')');
+    }
+    //$this->storage = unserialize(file_get_contents($this->path.$this->offset));
     reset($this->storage);
   }
   

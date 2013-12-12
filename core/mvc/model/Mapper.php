@@ -35,11 +35,27 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
   const PERSISTED = 1;
   
   // onde dados do registro ficam guardados
+  /**
+   * Registro atual.
+   * 
+   * @var mixed
+   */
   protected $data;
+  
+  /**
+   * Cópia do registro atual usado pra comparar valores alterados (dirty values).
+   * 
+   * @var mixed 
+   */
   protected $_pristine_data;
   
   // entidade que guarda a persistencia do mapper
   // pode ser uma tabela, um nome de arquivo, ou até nada (dados temporarios)
+  /**
+   * Entidade que controla a persistencia dos dados.
+   * 
+   * @var query\Table|string|null
+   */
   protected $entity;
   
   // identificador do registro
@@ -167,7 +183,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     $order = reset($this->order);
     $this->sort($order);
     
-    // só pega registros não deletados, se a tabela foi configurada para tal
+    // TODO: só pega registros não deletados, se a tabela foi configurada para tal
     /*if ($this->permanent_delete !== true) {
       $where[] = new query\Criteria(new query\Field(self::DEFAULT_DELETE_NAME), '=', '0');
     }*/
@@ -225,7 +241,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
       return 0;
     }
     
-    // só pega registros não deletados, se a tabela foi configurada para tal
+    // TODO: só pega registros não deletados, se a tabela foi configurada para tal
     /*if ($this->permanent_delete !== true) {
       $where[] = new query\Criteria(new query\Field(self::DEFAULT_DELETE_NAME), '=', '0');
     }*/
@@ -273,18 +289,21 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
    */
   public function insert() {
     
+    $pointer = $this->getPointer();
     $affected = 0;
     foreach ($this->result as $i => $_) {
       if ($this->result[$i]['flag'] === self::PERSISTED) {
         continue;
       }
       ++$affected;
+      //$this->result[$i]['data'][$pointer] = $this->autoIncrement();
       //$this->result[$i]['flags'] = self::PERSISTED;
       // tive que mudar pq o PHP 5.3 não suporta a sintaxe acima com offsetGet passado por referencia direto
       // funções passadas por referencia requerem o & nos dois lugares
       // ver: http://www.php.net/manual/en/language.references.return.php
       $result = &$this->result->offsetGet( $i );
       //$result['data'] = $data;
+      $result['data'][$pointer] = $this->autoIncrement();
       $result['flag'] = self::PERSISTED;
     }
     
@@ -431,8 +450,9 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     }
     if ($data === null) return;
     
-    if (!isset($data[ $this->getPointer() ]))
-      $data[ $this->getPointer() ] = $this->autoIncrement();
+    $pointer = $this->getPointer();
+    if ($flag !== self::FRESH && !isset($data[ $pointer ]))
+      $data[ $pointer ] = $this->autoIncrement();
     
     $this->result[ $this->count++ ] = array(
         'data' => $data,
@@ -498,7 +518,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     if ($data === null) return;
     
     $pointer = $this->getPointer();
-    if (!isset($data[ $pointer ]))
+    if ($flag !== self::FRESH && !isset($data[ $pointer ]))
       $data[ $pointer ] = $this->autoIncrement();
     
     $this->result->unshift(array(
@@ -854,9 +874,15 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
       $this->_filtered_result = array();
       return 0;
     }
-    if ($num_rows = count($this->_filtered_result) && $filter == $this->filters) {
-      return $num_rows;
-    }
+    // se o filtro for o mesmo, nao precisa filtrar de novo...
+    // a menos que tenha sido passado um order e, entre um select() e outro, tenha
+    // sido feito um update(), insert() ou delete()
+    /*if (!$this->order && ($num_rows = count($this->_filtered_result)) && $filter == $this->filters) {
+      return $num_rows - 1; // -1 porque o _filtered_result sempre, quando filtrado, possui seu primeiro elemento -1 (flag)
+    }*/
+    // TODO: não deixar refiltrar nos casos acima, melhorar a lógica desse if, que está muito basico.
+    // talvez criando uma flag que identifique que foi feito uma alteração no result, e que o select()
+    // "zere" toda vez que for chamado, fazendo com que seja refiltrado apenas 1 vez
     if ($filter) {
       $filter = new query\Expression('AND', $filter);
     }
