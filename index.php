@@ -4,6 +4,48 @@ namespace Djck;
 
 require 'core/bootstrap.php';
 
+class Teste extends system\AbstractAspectDelegate {
+  
+  protected function metodo($a, $b='bbbbbbbbb2323423') {
+    return "Você quis ($a) e [$b]";
+  }
+  
+  protected function getNome() {
+    return "jose";
+  }
+  
+  protected function getSobrenome() {
+    return "da silva";
+  }
+  
+}
+
+class TesteAdvice extends aspect\Advice {
+  
+  public function beforeMetodo($arguments) {
+    array_pop($arguments);
+    return $arguments;
+  }
+  
+  public function afterGets($result) {
+    return strtoupper($result);
+  }
+  
+}
+
+$teste = new Teste;
+$aspect = new TesteAdvice;
+
+system\AspectDelegator::register($teste, 'metodo', $aspect);
+system\AspectDelegator::register($teste, '/^get.*/', $aspect, 'gets');
+
+dump($teste->metodo('aaa', 'bbb'));
+//dump($teste->getNome());
+//dump($teste->getSobrenome());
+dump($teste);
+
+finish();
+
 database\DbcConfig::set('aaa', array(
   '#host'     => 'localhost',
   '#user'     => 'root',

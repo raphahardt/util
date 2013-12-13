@@ -11,14 +11,19 @@ use Djck\Core;
 // essentials
 Core::import('AbstractObject',    '/core/core');
 Core::import('AbstractSingleton', '/core/core');
+Core::import('AbstractAspectDelegate', '/core/core');
 
 // types
 Core::importPackage('Djck\types');
 
+// aop
+Core::import('Advice',   'Djck\aspect');
+
 // interface
-Core::import('Response',   'Djck\network');
-Core::import('Request',    'Djck\network');
-Core::import('Dispatcher', '/core/core');
+Core::import('Response',        'Djck\network');
+Core::import('Request',         'Djck\network');
+Core::import('AspectDelegator', '/core/core');
+Core::import('Dispatcher',      '/core/core');
 
 // database
 Core::import('DbcConfig', 'Djck\database:dbc');

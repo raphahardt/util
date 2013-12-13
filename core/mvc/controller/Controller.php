@@ -3,13 +3,12 @@
 namespace Djck\mvc;
 
 use Djck\Core;
-use Djck\CoreException;
 use Djck\system\AbstractObject;
 
 use Djck\network\Request;
 use Djck\network\Response;
 
-class ControllerException extends CoreException {}
+Core::registerPackage('Djck\mvc:controller\exceptions');
 
 abstract class Controller extends AbstractObject {
   
