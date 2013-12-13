@@ -13,6 +13,15 @@ database\DbcConfig::set('aaa', array(
 
 $bd = database\Dbc::getInstance('aaa');
 
+$bd->prepare('select id from compra');
+$bd->execute();
+while ($row = $bd->fetch_assoc()) {
+  dump($row);
+}
+$bd->close();
+
+finish();
+
 $mapper = new mvc\mappers\TempMapper();
 $mapper->setFields(array(new database\query\Field('id'), new database\query\Field('coluna'), new database\query\Field('coluna2'), new database\query\Field('coluna4')));
 for($i=0;$i<49;$i++) {

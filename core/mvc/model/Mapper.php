@@ -217,7 +217,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
    * 
    * @return int Número de registros que foram efetivamente alterados
    */
-  public function update() {
+  public function update($fields=array()) {
     
     $where = $this->filters;
     if (!$where) $where = array();
@@ -250,7 +250,15 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     $affected = 0;
     
     if ($num_rows > 0) {
-      $updated_values = $this->_getUpdatedValues(); // só valores que foram alterados
+      if (empty($fields)) {
+        $updated_values = $this->_getUpdatedValues(); // só valores que foram alterados
+      } else {
+        // se escolheu os campos, usar
+        $updated_values = array();
+        foreach ($fields as $f) {
+          $updated_values[ $f->getAlias() ] = $this->data[ $f->getAlias() ];
+        }
+      }
 
       foreach ($this->_filtered_result as $i => $_) {
         if ($i < 0) {

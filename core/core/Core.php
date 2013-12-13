@@ -18,7 +18,23 @@ if (!defined('PLUGIN_PATH'))
 /**
  * Exceções lançadas da Core
  */
-class CoreException extends \Exception {}
+class CoreException extends \Exception {
+  
+  public function __construct($message, $code = 0, $previous = null) {
+    
+    // delegation of exception
+    if ($message instanceof \Exception) {
+      $code = $message->getCode();
+      $previous = $message->getPrevious();
+      $this->file = $message->getFile();
+      $this->line = $message->getLine();
+      $message = $message->getMessage();
+    }
+    
+    parent::__construct($message, $code, $previous);
+  }
+  
+}
 
 /**
  * Classe principal do sistema.

@@ -16,6 +16,10 @@ class Dbc extends AbstractSingleton {
   private $charset;
   private $autocommit = true;
   //stmt
+  /**
+   *
+   * @var \mysqli_stmt[] 
+   */
   private $stmt = array();
   private $stmt_binds = array();
   private $stmt_values = array();
@@ -45,26 +49,36 @@ class Dbc extends AbstractSingleton {
     // pega a configuracao
     $config_params = DbcConfig::get($config);
     
-    // faz uma conexão com o banco de dados
-    $this->con = mysqli_init();
-    $this->con->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, 1);
-    if ( !$this->con->real_connect($config_params['#host'], 
-            $config_params['#user'], 
-            $config_params['#password'], 
-            $config_params['#schema'], $config_params['#port']) ) {
-      // erro de conexão
-      throw new exceptions\DbcFailedConnectionException($this->con->connect_error, $this->con->connect_errno);
+    // ativa exceptions pro mysqli
+    mysqli_report(MYSQLI_REPORT_STRICT);
+    
+    try {
+      // faz uma conexão com o banco de dados
+      $this->con = mysqli_init();
+      $this->con->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, 1);
+      if ( !$this->con->real_connect($config_params['#host'], 
+              $config_params['#user'], 
+              $config_params['#password'], 
+              $config_params['#schema'], $config_params['#port']) ) {
+        // erro de conexão
+        throw new exceptions\DbcFailedConnectionException($this->con->connect_error, $this->con->connect_errno);
+      }
+    }
+    catch (\mysqli_sql_exception $e) {
+      throw new exceptions\DbcFailedConnectionException($e);
     }
 
     // define o nome do banco da conexao
     $this->schema = strtoupper($config_params['#schema']);
 
-    // define o charset utilizado
-    if (!$this->con->set_charset($config_params['#charset'])) {
-      // erro de charset
-      throw new exceptions\DbcFailedExecuteException($this->con->error, $this->con->errno);
+    try {
+      // define o charset utilizado
+      $this->con->set_charset($config_params['#charset']);
+      $this->charset = $config_params['#charset'];
+      
+    } catch (\mysqli_sql_exception $e) {
+      throw new exceptions\DbcFailedExecuteException($e);
     }
-    $this->charset = $config_params['#charset'];
 
     // limpa variaveis internas 
     // FIXME: talvez não precise dessa chamada...
@@ -147,9 +161,9 @@ class Dbc extends AbstractSingleton {
    * @param string $charset Charset
    */
   public function connect($config = null) {
-    if (is_object($this->con))
+    if (is_object($this->con)) {
       return $this->con;
-    else {
+    } else {
       return new self($config);
     }
   }
@@ -188,7 +202,7 @@ class Dbc extends AbstractSingleton {
    * @return bool
    */
   public function prepare($query) {
-    $index = & $this->stmt_index;
+    $index = &$this->stmt_index;
 
     // joga o ponteiro para o proximo stmt para o proximo prepare usar
     ++$index;
@@ -206,16 +220,19 @@ class Dbc extends AbstractSingleton {
       // no mysql, o select não precisa de preparo, então apenas guarda a posição de stmt para
       // o execute
       $success = true;
+      
     } else {
       // faz o prepare numa nova instancia de stmt
-      $this->stmt[$index] = mysqli_prepare($this->con, $query);
-      
-      if (mysqli_error($this->con)) {
-        // erro de conexão
-        throw new DbcException(mysqli_errno($this->con) . ': ' . mysqli_error($this->con));
+      try {
+        $this->stmt[$index] = $this->con->prepare($query);
+        $success = is_object($this->stmt[$index]);
+        if (!$success) {
+          throw new exceptions\DbcFailedPrepareException($this->con->error, $this->con->errno);
+        }
+      } 
+      catch (\mysqli_sql_exception $e) {        
+        throw new exceptions\DbcFailedPrepareException($e);
       }
-
-      $success = is_object($this->stmt[$index]);
     }
     // limpa os binds e valores bindaveis
     $this->stmt_binds[$index] = '';
@@ -261,7 +278,7 @@ class Dbc extends AbstractSingleton {
           if (get_magic_quotes_gpc()) {
             $valor = stripslashes($valor);
           }
-          $valor = mysqli_real_escape_string($this->con, $valor);
+          $valor = $this->con->real_escape_string($valor);
 
           // se for do tipo string, envolver com apostrofes
           if ($type == 's') {
@@ -285,20 +302,21 @@ class Dbc extends AbstractSingleton {
         }
       }
 
-      $this->stmt[$index] = mysqli_query($this->con, $query);
-
-      if (mysqli_error($this->con)) {
-        // erro de conexão
-        throw new DbcException(mysqli_errno($this->con) . ': ' . mysqli_error($this->con));
+      try {
+        $this->stmt[$index] = $this->con->query($query);
+        $success = is_object($this->stmt[$index]);
+        if (!$success) {
+          throw new exceptions\DbcFailedExecuteException($this->con->error, $this->con->errno);
+        }
+      } 
+      catch (\mysqli_sql_exception $e) {  
+        throw new exceptions\DbcFailedExecuteException($e);
       }
       
-      /*dump($this->stmt_query[$index]);
-      dump($this->stmt_values[$index]);
-      dump(is_object($this->stmt[$index]));*/
-
       // retorna se o query foi executado com sucesso
-      return is_object($this->stmt[$index]);
-    } else {
+      return $success;
+    } 
+    else {
       // binda os parametros temporarios antes guardados
       if (!empty($this->stmt_values[$index])) {
         $values = array_merge((array) $this->stmt_binds[$index], $this->stmt_values[$index]);
@@ -323,16 +341,15 @@ class Dbc extends AbstractSingleton {
       }
 
       // executa o comando
-      $success = mysqli_stmt_execute($this->stmt[$index]);
-
-      if (mysqli_error($this->con)) {
-        // erro de conexão
-        throw new DbcException(mysqli_errno($this->con) . ': ' . mysqli_error($this->con));
+      try {
+        $success = $this->stmt[$index]->execute();
+        if (!$success) {
+          throw new exceptions\DbcFailedExecuteException($this->con->error, $this->con->errno);
+        }
       }
-      
-      /*dump($this->stmt_query[$index]);
-      dump($this->stmt_values[$index]);
-      dump($success);*/
+      catch (\mysqli_sql_exception $e) {        
+        throw new exceptions\DbcFailedExecuteException($e);
+      }
 
       return $success;
     }
@@ -347,28 +364,31 @@ class Dbc extends AbstractSingleton {
     $index = & $this->stmt_index;
 
     $success = false;
+    
+    try {
 
-    // verifica se o resource foi criado
-    if (is_object($this->stmt[$index])) {
+      // verifica se o resource foi criado
+      if (is_object($this->stmt[$index])) {
 
-      // no mysql existem dois tipos de objetos diferentes para manipulação de resultado
-      // verificar qual é para usar o comando free correto
-      if (get_class($this->stmt[$index]) == 'mysqli_stmt') {
-        // se for stmt (update, insert, delete ...)
-        $success = mysqli_stmt_close($this->stmt[$index]);
-      } elseif (get_class($this->stmt[$index]) == 'mysqli_result') {
-        // se for result (select, describe...)
-        mysqli_free_result($this->stmt[$index]);
-        $success = true; // mysql_free_result não retorna nada
+        // no mysql existem dois tipos de objetos diferentes para manipulação de resultado
+        // verificar qual é para usar o comando free correto
+        if ($this->stmt[$index] instanceof \mysqli_stmt) {
+          // se for stmt (update, insert, delete ...)
+          $success = $this->stmt[$index]->close();
+        } 
+        elseif ($this->stmt[$index] instanceof \mysqli_result) {
+          // se for result (select, describe...)
+          $this->stmt[$index]->free_result();
+          $success = true; // mysql_free_result não retorna nada
+        }
       }
+    
+    }
+    catch (\mysqli_sql_exception $e) {        
+      throw new exceptions\DbcFailedCloseException($e);
     }
     // volta o ponteiro para o stmt antigo
     --$index;
-
-    if (mysqli_error($this->con)) {
-      // erro de conexão
-      throw new DbcException(mysqli_errno($this->con) . ': ' . mysqli_error($this->con));
-    }
 
     return $success;
   }
@@ -406,7 +426,7 @@ class Dbc extends AbstractSingleton {
    * @author Raphael Hardt
    */
   public function commit() {
-    return mysqli_commit($this->con);
+    return $this->con->commit();
   }
 
   /**
@@ -414,7 +434,7 @@ class Dbc extends AbstractSingleton {
    * @author Raphael Hardt
    */
   public function rollback() {
-    return mysqli_rollback($this->con);
+    return $this->con->rollback();
   }
 
   /**
@@ -424,7 +444,7 @@ class Dbc extends AbstractSingleton {
    * @return int O número ID do último registro inserido
    */
   public function insert_id() {
-    return mysqli_insert_id($this->con);
+    return $this->con->insert_id;
   }
 
   /**
@@ -435,10 +455,11 @@ class Dbc extends AbstractSingleton {
   public function affected_rows() {
     $index = $this->stmt_index;
     // se não for um stmt (update,insert...), retornar 0
-    if (get_class($this->stmt[$index]) != 'mysqli_stmt')
+    if (!($this->stmt[$index] instanceof \mysqli_stmt)) {
       return 0;
+    }
 
-    return mysqli_stmt_affected_rows($this->stmt[$index]);
+    return $this->stmt[$index]->affected_rows;
   }
 
   /**
@@ -448,12 +469,7 @@ class Dbc extends AbstractSingleton {
    */
   public function num_rows() {
     $index = $this->stmt_index;
-    // verificar qual tipo de resource está vindo
-    if (get_class($this->stmt[$index]) == 'mysqli_stmt') {
-      return mysqli_stmt_num_rows($this->stmt[$index]);
-    } else {
-      return mysqli_num_rows($this->stmt[$index]);
-    }
+    return $this->stmt[$index]->num_rows;
   }
 
   /**
@@ -466,10 +482,16 @@ class Dbc extends AbstractSingleton {
   public function fetch_object() {
     $index = $this->stmt_index;
     // se não for um resource result, retornar false
-    if (get_class($this->stmt[$index]) == 'mysqli_stmt')
+    if ($this->stmt[$index] instanceof \mysqli_stmt) {
       return false;
+    }
 
-    return mysqli_fetch_object($this->stmt[$index]);
+    try {
+      return $this->stmt[$index]->fetch_object();
+    }
+    catch (\mysqli_sql_exception $e) {        
+      throw new exceptions\DbcFailedFetchException($e);
+    }
   }
 
   /**
@@ -505,14 +527,21 @@ class Dbc extends AbstractSingleton {
     $index = $this->stmt_index;
 
     // se não for um resource result, retornar false
-    if (get_class($this->stmt[$index]) == 'mysqli_stmt')
+    if ($this->stmt[$index] instanceof \mysqli_stmt) {
       return false;
+    }
 
     // se não setar as flags, retornar um array associativo e numerico
-    if (!isset($flags))
+    if (!isset($flags)) {
       $flags = MYSQLI_BOTH;
+    }
 
-    return mysqli_fetch_assoc($this->stmt[$index]);
+    try {
+      return $this->stmt[$index]->fetch_array($flags);
+    }
+    catch (\mysqli_sql_exception $e) {        
+      throw new exceptions\DbcFailedFetchException($e);
+    }
   }
 
   private static function _refValues($arr) {
