@@ -31,7 +31,7 @@ Core::uses('Aspect', 'Djck\aspect');
  * // advice para o objeto
  * class TesteAdvice extends aspect\Advice {
  *   
- *   function beforeMetodo($arguments) {
+ *   function before($arguments) {
  *     $arguments[0] = 'interceptei o primeiro parametro';
  *     return $arguments;
  *   }
@@ -39,7 +39,8 @@ Core::uses('Aspect', 'Djck\aspect');
  * }
  * 
  * // registrando (no seu app)
- * system\AspectDelegator(new ObjetoAspecto, 'metodo', new TesteAdvice);
+ * $delegator = system\AspectDelegator::getInstance();
+ * $delegator->register(new ObjetoAspecto, 'metodo', new TesteAdvice);
  * 
  * ?>
  * </code>
@@ -48,90 +49,51 @@ Core::uses('Aspect', 'Djck\aspect');
 abstract class AbstractAspectDelegate extends AbstractObject {
   
   /**
-   *
-   * @var \Djck\aspect\Advice[]
-   */
-  protected $aspects = array();
-  
-  /**
-   * Mapeia cada método da classe com seu aspecto correspondente.
-   * 
-   * É automaticamente preenchido pelo AspectDelegator.
-   * 
-   * @var array Array de advices
-   */
-  protected $advices = array();
-  
-  public function addAdvice($method, Advice $aspect, $alias = null) {
-    if (!isset($this->advices[$method])) {
-      $this->advices[$method] = array();
-    }
-    if (isset($alias)) {
-      // se tiver um alias, chamar o metodo com alias
-      $add = array($aspect, $alias);
-    } else {
-      $add = $aspect;
-    }
-    // verifica se foi dado uma prioridade pro aspecto (menor->primeiro)
-    if (isset($aspect->priority)) {
-      $this->advices[$method][(int)$aspect->priority] = $add;
-    } else {
-      // se nao tiver prioridade, usa metodo fifo (fila)
-      $this->advices[$method][] = $add;
-    }
-  }
-  
-  public function refreshAdvicePriority() {
-    foreach ($this->advices as &$advices) {
-      ksort($advices);
-    }
-  }
-  
-  /**
    * Wrapper para métodos de um AbstractAspect
    * 
-   * @param type $name
-   * @param type $arguments
-   * @return type
+   * @param string $name
+   * @param array $arguments
+   * @return mixed
    */
   public function __call($name, $arguments) {
-    if (isset($this->advices[$name])) {
+    $delegator = AspectDelegator::getInstance();
+    $advices = $delegator->getAdvices($this);
+    
+    if (isset($advices[$name])) {
       
       // para entender a logica do codigo abaixo,
       // ver: https://code.google.com/p/ajaxpect/wiki/UsageExample
       
-      // normaliza o nome do metodo e referencia o advice
-      $advices = array();
-      foreach ($this->advices[$name] as $advice) {
-        if (is_array($advice)) {
-          $action = ucfirst($advice[1]);
-          $advice = $advice[0];
-        } else {
-          $action = ucfirst($name);
-        }
-        $advices[ $action ] = $advice;
-      }
-      
-      foreach ($advices as $action => $advice) {
+      foreach ($advices[$name] as $advice) {
         // execute before (passa o array de argumentos e retorna para o metodo around
         // ser executado
-        if (method_exists($advice, "before$action")) {
-          $arguments = $advice->{"before$action"}($arguments);
-        }
+        $arguments = $advice->before($arguments);
+      }
       
-        // execute around
-        // TODO fazer around
+      try {
         
-      }
-      
-      $result = $this->callMethod($name, $arguments);
-      
-      foreach ($advices as $action => $advice) {
-        // execute after
-        if (method_exists($advice, "after$action")) {
-          $result = $advice->{"after$action"}($result);
+        foreach ($advices[$name] as $advice) {
+          // execute around
+          $result = $advice->around($name, $arguments);
+          // execute after
+          $result = $advice->after($result);
+        }
+        
+      } catch (\Exception $e) {
+        // execute after throwing
+        try {
+          $result = $advice->afterThrowing($e);
+        } catch (\Exception $e) {
+          
+          // (hack) executa o finally mesmo se o after throwing lançar outra exception
+          $advice->afterFinally();
+          throw $e;
         }
       }
+      
+      // executa o finally (não será executado se o afterThrowing() lançar uma exception
+      // (ou lançar a mesma exception)
+      $advice->afterFinally();
       
       return $result;
       

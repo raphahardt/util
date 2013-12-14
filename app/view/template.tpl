@@ -37,7 +37,7 @@
   <div id="fb-root"></div>
   
   #{block 'view.body.header'}
-    
+    #{*
     <!-- Header do site -->
     <header class="re-header">
       <div class="container">
@@ -70,6 +70,7 @@
       </div>
     </header>
     <!-- fim Header -->
+    *}
   
   #{/block}
   #{* ... *}

@@ -569,7 +569,7 @@ class Response {
       return $this->_status;
     }
     if (!isset($this->_statusCodes[$code])) {
-      throw new CoreException('Status code desconhecido');
+      throw new \Djck\CoreException('Status code desconhecido');
     }
     return $this->_status = $code;
   }

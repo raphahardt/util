@@ -14,8 +14,8 @@ Core::uses('AppController', 'App\controller');
  */
 class ErrorController extends AppController {
   
-  function executeIndex() {
-    echo '<h1>404 Not Found, little padawan</h1>';
+  function executeIndex($statusCode) {
+    echo "<h1>$statusCode Not Found, little padawan</h1>";
   }
   
 }

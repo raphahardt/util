@@ -3,28 +3,28 @@
 namespace Djck\mvc;
 
 use Djck\Core;
-use Djck\system\AbstractObject;
+use Djck\system\AbstractAspectDelegate;
 
 use Djck\network\Request;
 use Djck\network\Response;
 
 Core::registerPackage('Djck\mvc:controller\exceptions');
 
-abstract class Controller extends AbstractObject {
+abstract class Controller extends AbstractAspectDelegate {
   
   /**
    * Objeto 
-   * @var Djck\network\Request 
+   * @var \Djck\network\Request 
    */
   public $Request;
   /**
    *
-   * @var Djck\network\Response 
+   * @var \Djck\network\Response 
    */
   public $Response;
   /**
    *
-   * @var Djck\session\Session 
+   * @var \Djck\session\Session 
    */
   protected $session;
   
@@ -59,39 +59,6 @@ abstract class Controller extends AbstractObject {
     
     $this->logged = is_object($this->user) && $this->user->id > 0;
     $this->token = $_SESSION[SESSION_TOKEN_NAME];
-  }
-  
-  protected function registerCallback($function_name, $callback_name) {
-    
-  }
-  
-  public function beforeExecute() {
-    return true;
-  }
-  
-  public function afterExecute() {
-    return;
-  }
-  
-  public function execute($method, $params = array()) {
-    switch (count($params)) {
-      case 0:
-        return $this->{$method}();
-      case 1:
-        return $this->{$method}($params[0]);
-      case 2:
-        return $this->{$method}($params[0], $params[1]);
-      case 3:
-        return $this->{$method}($params[0], $params[1], $params[2]);
-      case 4:
-        return $this->{$method}($params[0], $params[1], $params[2], $params[3]);
-      case 5:
-        return $this->{$method}($params[0], $params[1], $params[2], $params[3], $params[4]);
-      case 6:
-        return $this->{$method}($params[0], $params[1], $params[2], $params[3], $params[4], $params[5]);
-      default:
-        return call_user_func_array(array(&$this, $method), $params);
-    }
   }
   
 }

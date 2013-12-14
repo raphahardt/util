@@ -662,7 +662,7 @@ abstract class Core {
    * @param string $buffer Buffer atual
    * @return string Buffer a ser mostrado no browser
    */
-  final static function outputbuffer_handler($buffer) {
+  final static function outputbuffer_handler($buffer, $phase) {
     // TODO fazer depois
     /*$error = error_get_last();
 
@@ -686,8 +686,7 @@ abstract class Core {
                 . '</div>';
       }
     }*/
-    
-    return $buffer;
+    return ob_gzhandler($buffer, $phase);
   }
   
   /**

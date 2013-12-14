@@ -84,7 +84,7 @@ class HomeController extends AppController {
     echo json($data);
   }
   
-  function executeIndex(AppView $View) {
+  protected function executeIndex(AppView $View) {
     
     /*$this->session['sess'.uniqid()] = uniqid();
     Core::dump();
