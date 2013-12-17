@@ -33,6 +33,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
   
   const FRESH = 0;
   const PERSISTED = 1;
+  const DIRTY = 2;
   
   // onde dados do registro ficam guardados
   /**
@@ -48,6 +49,9 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
    * @var mixed 
    */
   protected $_pristine_data;
+  protected $_is_dirty = false;
+  protected $_dirties = 0;
+  protected $_inserts = 0;
   
   // entidade que guarda a persistencia do mapper
   // pode ser uma tabela, um nome de arquivo, ou até nada (dados temporarios)
@@ -223,7 +227,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     if (!$where) $where = array();
     
     // primeiro tenta ver se tem id para alterar
-    if (empty($where) && ($id = $this->getPointerValue())) {
+    if ($this->_dirties == 1 && empty($where) && ($id = $this->getPointerValue())) {
       $new_data = $this->data;
       
       $offset = $this->find($id);
@@ -231,14 +235,38 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
         // se for id, muda só 1 registro
         $this->set($new_data);
         $this->refresh();
+        
+        $this->_removeFlag($offset, self::DIRTY);
+        $this->_dirties = 0;
+        $this->_is_dirty = false;
+        
         return 1;
       }
     }
     
-    // se não tiver nenhum filtro, não fazer update
-    $has_filter = count($where) > 0;
-    if (!$has_filter) {
-      return 0;
+    // se não tiver nenhum filtro, fazer update só nos dirty
+    if (empty($where)) {
+      if ($this->_dirties > 0) {
+        // o dirty no caso de um mapper temporario funciona da mesma forma que
+        // o insert: ele apenas seta as flags para PERSISTED de novo, pois os registros
+        // já estão, teoricamente, persistidos nele mesmo. cada mapper deve implementar
+        // essa parte da sua maneira
+        $affected = 0;
+        foreach ($this->result as $i => $_) {
+          if (!$this->_isFlag($i, self::DIRTY)) { // registro que nao tiver dirty, ignorar
+            continue;
+          }
+          ++$affected;
+          $this->_removeFlag($i, self::DIRTY);
+          
+          // se acabou os registros para alterar, já parar daqui (performance)
+          if ($this->_dirties == 0) break;
+          --$this->_dirties;
+        }
+        $this->_is_dirty = ($this->_dirties > 0);
+        return $affected;
+      }
+      return 0; // se não tiver filtro e nem campo pra alterar (dirty), nao fazer nada
     }
     
     // TODO: só pega registros não deletados, se a tabela foi configurada para tal
@@ -297,23 +325,41 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
    */
   public function insert() {
     
+    if ($this->_inserts == 0) { // performance
+      return 0;
+    }
+    
     $pointer = $this->getPointer();
     $affected = 0;
-    foreach ($this->result as $i => $_) {
-      if ($this->result[$i]['flag'] === self::PERSISTED) {
+    //foreach ($this->result as $i => $_) {
+    for ($i = $this->result->count();$i>= 0; $i--) { // faço invertido pois é mais provavel que seja usado push() do que unshift()
+      
+      if ($this->_isFlag($i, (self::PERSISTED | self::DIRTY))) {
         continue;
       }
       ++$affected;
       //$this->result[$i]['data'][$pointer] = $this->autoIncrement();
-      //$this->result[$i]['flags'] = self::PERSISTED;
+      //$this->result[$i]['flag'] |= self::PERSISTED;
       // tive que mudar pq o PHP 5.3 não suporta a sintaxe acima com offsetGet passado por referencia direto
       // funções passadas por referencia requerem o & nos dois lugares
       // ver: http://www.php.net/manual/en/language.references.return.php
       $result = &$this->result->offsetGet( $i );
       //$result['data'] = $data;
       $result['data'][$pointer] = $this->autoIncrement();
-      $result['flag'] = self::PERSISTED;
+      $result['flag'] |= self::PERSISTED;
+      //$this->_addFlag($i, self::PERSISTED); // só não mudei acima pois é mais simples e rapido fazer do jeito q está
+      
+      // se acabou os registros para inserir, já parar daqui (performance)
+      if ($this->_inserts == 0) break;
+      
+      --$this->_inserts;
     }
+    
+    // aqui eu seto para zero pois pode haver casos de dar um push(), e, logo em seguida,
+    // um pop(), fazendo com que o _inserts fique igual a 1, sendo que deveria estar 0.
+    // nao verifico no shift() ou no pop() pois é meio pesado ficar verificando isso,
+    // então prefiro zerar no final essa var toda vez que der um insert
+    $this->_inserts = 0;
     
     return $affected;
   }
@@ -339,8 +385,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     }
     
     // se não tiver nenhum filtro, não fazer delete
-    $has_filter = count($where) > 0;
-    if (!$has_filter) {
+    if (empty($where)) {
       return 0;
     }
     
@@ -458,9 +503,16 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     }
     if ($data === null) return;
     
+    $this->_setData($data, $data);
+    
     $pointer = $this->getPointer();
     if ($flag !== self::FRESH && !isset($data[ $pointer ]))
       $data[ $pointer ] = $this->autoIncrement();
+    
+    // conta os inserts a fazer (performance)
+    if ($flag === self::FRESH) {
+      ++$this->_inserts;
+    }
     
     $this->result[ $this->count++ ] = array(
         'data' => $data,
@@ -525,9 +577,16 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     }
     if ($data === null) return;
     
+    $this->_setData($data, $data);
+    
     $pointer = $this->getPointer();
     if ($flag !== self::FRESH && !isset($data[ $pointer ]))
       $data[ $pointer ] = $this->autoIncrement();
+    
+    // conta os inserts a fazer (performance)
+    if ($flag === self::FRESH) {
+      ++$this->_inserts;
+    }
     
     $this->result->unshift(array(
         'data' => $data,
@@ -555,20 +614,6 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
    */
   public function exists() {
     return $this->data !== null || current($this->pointer) !== null;
-  }
-  
-  protected function _searchNextFilteredResult($inverse = false) {
-    if (!empty($this->_filtered_result)) {
-      while (!$this->_filtered_result[$this->internal_pointer]) {
-        // se não achar, retornar -1
-        if ($this->internal_pointer < 0 || $this->internal_pointer >= $this->count) {
-          $this->internal_pointer = -1;
-          break;
-        }
-        // anda com o ponteiro até achar o proximo registro filtrado
-        $this->internal_pointer += $inverse ? -1 : 1;
-      }
-    }
   }
   
   /**
@@ -646,6 +691,11 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
       $result = &$this->result->offsetGet( $this->internal_pointer );
       //$result['data'] = $data;
       $this->_setData($result['data'], $data);
+      
+      if ($this->_is_dirty && $this->_isFlag($this->internal_pointer, self::PERSISTED)) {
+        $this->_addFlag($this->internal_pointer, self::DIRTY);
+        ++$this->_dirties;
+      }
     }
   }
   
@@ -864,6 +914,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     /*foreach ($this->data as $k => $f) {
       $this->_pristine_data[$k] = $f;
     }*/
+    $this->_is_dirty = false;
   }
   
   /**
@@ -928,6 +979,20 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     return $fields;
   }
   
+  protected function _searchNextFilteredResult($inverse = false) {
+    if (!empty($this->_filtered_result)) {
+      while (!$this->_filtered_result[$this->internal_pointer]) {
+        // se não achar, retornar -1
+        if ($this->internal_pointer < 0 || $this->internal_pointer >= $this->count) {
+          $this->internal_pointer = -1;
+          break;
+        }
+        // anda com o ponteiro até achar o proximo registro filtrado
+        $this->internal_pointer += $inverse ? -1 : 1;
+      }
+    }
+  }
+  
   protected function _setData(&$prop, $data) {
     if (!empty($this->_fields_array)) {
       if (is_null($data)) {
@@ -937,6 +1002,40 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
       }
     } else {
       $prop = $data;
+    }
+  }
+  
+  protected function _addFlag($offset, $flag) {
+    $this->_flag($offset, $flag, '|');
+  }
+  
+  protected function _setFlag($offset, $flag) {
+    $this->_flag($offset, $flag, '=');
+  }
+  
+  protected function _removeFlag($offset, $flag) {
+    $this->_flag($offset, $flag, '^');
+  }
+  
+  protected function _isFlag($offset, $flag) {
+    return (($this->result[$offset]['flag'] & $flag) != 0);
+  }
+  
+  protected function _flag($offset, $flag, $operation) {
+    $result = &$this->result->offsetGet( $offset );
+    switch ($operation) {
+      case '=':
+        $result['flag'] = $flag;
+        break;
+      case '|':
+        $result['flag'] |= $flag;
+        break;
+      case '&':
+        $result['flag'] &= $flag;
+        break;
+      case '^':
+        $result['flag'] ^= $flag;
+        break;
     }
   }
   
@@ -979,6 +1078,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
       $this->data[ $offset ] = $value;
       //$this->saveState();
     }
+    $this->_is_dirty = true;
   }
   
   /**
