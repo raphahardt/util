@@ -532,6 +532,7 @@ if (!function_exists('dump')) {
     echo '</div>';
     echo '<div style="color:white;background:purple;padding:10px;">';
     echo '<strong>Total: '.($end*1000).'ms ('.(round($end, 2)).' segundos)</strong><br>';
+    echo '<strong>Memory: '.fmt_bibytes(memory_get_usage(true)).'/'.fmt_bibytes(memory_get_peak_usage(true)).'</strong><br>';
     echo '</div></pre>';
     if ($exit) exit;
   }

@@ -9,8 +9,8 @@ use Djck\Core;
  * Não mudar este arquivo (somente em caso de algum core for essencial carregar). 
  */
 // essentials
-Core::import('AbstractObject',    '/core/core');
-Core::import('AbstractSingleton', '/core/core');
+Core::import('AbstractObject',         '/core/core');
+Core::import('AbstractSingleton',      '/core/core');
 Core::import('AbstractAspectDelegate', '/core/core');
 
 // types
