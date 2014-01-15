@@ -43,7 +43,7 @@ abstract class Base extends AbstractObject {
   );
   
   public function __construct() {
-    ;
+    parent::__construct();
   }
   
   /**

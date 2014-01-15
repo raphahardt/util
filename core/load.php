@@ -11,7 +11,7 @@ use Djck\Core;
 // essentials
 Core::import('AbstractObject',         '/core/core');
 Core::import('AbstractSingleton',      '/core/core');
-Core::import('AbstractAspectDelegate', '/core/core');
+Core::import('AbstractDelegate', '/core/core');
 
 // types
 Core::importPackage('Djck\types');

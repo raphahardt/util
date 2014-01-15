@@ -3,7 +3,7 @@
 namespace Djck\system;
 
 use Djck\Core;
-use Djck\system\AbstractAspectDelegate;
+use Djck\system\AbstractDelegate;
 use Djck\system\AbstractSingleton;
 
 use Djck\aspect\Advice;
@@ -15,11 +15,22 @@ class AspectDelegator extends AbstractSingleton {
    * 
    * É automaticamente preenchido pelo AspectDelegator.
    * 
-   * @var \Djck\aspect\Advice[] Array de advices
+   * @var Advice[] Array de advices
    */
   protected $advices = array();
   
-  public function addAdvice(AbstractAspectDelegate $Delegate, $method, Advice $Advice) {
+  /**
+   * Interliga um método da classe delegativa diretamente com um advice específico.
+   * 
+   * Só usado internamente. Para criar um aspecto, utilize register().
+   * 
+   * @access protected
+   * @see AspectDelegator::register()
+   * @param AbstractDelegate $Delegate Classe delegativa
+   * @param string $method Nome do método. Não é permitido REGEX e nem callable
+   * @param Advice $Advice Advice a ser interligado
+   */
+  protected function _addAdvice(AbstractDelegate $Delegate, $method, Advice $Advice) {
     $Advice->setDelegate($Delegate);
     $hash = get_class($Delegate);
     
@@ -37,7 +48,16 @@ class AspectDelegator extends AbstractSingleton {
     unset($Delegate);
   }
   
-  public function refreshAdvicePriority(AbstractAspectDelegate $Delegate = null) {
+  /**
+   * Atualiza a ordenação dos advices naquele aspecto.
+   * 
+   * Se for passado uma classe delegativa, irá ordenar somente os aspectos dela.
+   * Só usado internamente, automaticamente chamado a cada register()
+   * 
+   * @access protected
+   * @param AbstractDelegate $Delegate
+   */
+  protected function _refreshAdvicePriority(AbstractDelegate $Delegate = null) {
     if (isset($Delegate)) {
       $hash = get_class($Delegate);
       foreach ($this->advices[$hash] as &$advices) {
@@ -55,7 +75,15 @@ class AspectDelegator extends AbstractSingleton {
     }
   }
   
-  public function getAdvices(AbstractAspectDelegate $Delegate = null) {
+  /**
+   * Retorna todos os advices.
+   * 
+   * Se passado uma classe delegativa, retorna os advices dela.
+   * 
+   * @param AbstractDelegate $Delegate
+   * @return Advice[]
+   */
+  public function getAdvices(AbstractDelegate $Delegate = null) {
     if (isset($Delegate)) {
       $hash = get_class($Delegate);
       // livra o objeto da memoria
@@ -75,7 +103,21 @@ class AspectDelegator extends AbstractSingleton {
     
   }
   
-  public function register(AbstractAspectDelegate $Delegate, $pattern, Advice $Advice) {
+  /**
+   * Cria um aspecto.
+   * 
+   * Recebe uma classe delegativa, o nome do método a ser interligado (pointcut) e
+   * o advice a ser usado no aspecto.
+   * O nome do método pode ser uma string com seu nome puro, uma REGEX que irá cobrir
+   * 0 ou mais métodos ou uma callable, que irá receber como parametro o nome do método
+   * da delegativa e deve retornar TRUE se encontrada, caso contrario FALSE.
+   * 
+   * @param AbstractDelegate $Delegate Classe delegativa
+   * @param string|callable $pattern Nome, regex ou callable de um método
+   * @param Advice $Advice Advice a ser interligado
+   * @throws \Djck\CoreException
+   */
+  public function register(AbstractDelegate $Delegate, $pattern, Advice $Advice) {
     
     $class = new \ReflectionClass($Delegate);
     $class_methods = $class->getMethods(\ReflectionMethod::IS_PROTECTED);
@@ -94,19 +136,34 @@ class AspectDelegator extends AbstractSingleton {
       // vai em cada método para mapea-lo
       foreach ($class_methods as $method) {
         $method_name = $method->getName();
+        // nomes de metodos reservados, não usar advices para eles
+        switch ($method_name) {
+          case 'cfg':
+          case 'callMethod':
+          case 'callStaticMethod':
+          case 'getInstance':
+            continue;
+        }
+        
         if (is_callable($pattern) && $pattern($method_name) == true) {
-          $this->addAdvice($Delegate, $method_name, $Advice);
+          // exemplo:
+          // $delegator->register(new Obj, function ($metodo) { return $metodo == 'meu_metodo' ? true : false; }, new ObjAdvice)
+          $this->_addAdvice($Delegate, $method_name, $Advice);
         } 
         elseif ($is_pattern && preg_match($pattern, $method_name)) {
-          $this->addAdvice($Delegate, $method_name, $Advice);
+          // exemplo:
+          // $delegator->register(new Obj, '/meu_metodo_[a-z]+/', new ObjAdvice)
+          $this->_addAdvice($Delegate, $method_name, $Advice);
         } 
         elseif ($method_name === $pattern) {
-          $this->addAdvice($Delegate, $method_name, $Advice);
+          // exemplo:
+          // $delegator->register(new Obj, 'meu_metodo_x', new ObjAdvice)
+          $this->_addAdvice($Delegate, $method_name, $Advice);
         }
       }
       
       // reordena advices dentro do delegate
-      $this->refreshAdvicePriority($Delegate);
+      $this->_refreshAdvicePriority($Delegate);
       
       // livra o objeto da memoria
       unset($Delegate);

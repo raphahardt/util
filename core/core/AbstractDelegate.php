@@ -18,7 +18,7 @@ Core::uses('Aspect', 'Djck\aspect');
  * --------------
  * <code>
  * <?php
- * class ObjetoAspecto extends system\AbstractAspectDelegate {
+ * class ObjetoAspecto extends system\AbstractDelegate {
  *   
  *   // importante! todos os métodos desta classe devem ter visibilidade protected ou private
  *   // métodos publicos serão chamados sem passar pelo aspecto
@@ -45,8 +45,15 @@ Core::uses('Aspect', 'Djck\aspect');
  * ?>
  * </code>
  * 
+ * @todo não funciona com métodos mágicos e nem métodos criados em tempo de execução (__call) 
+ * (caso seja usado __call na classe, deve chamar parent::__call, senão outros 
+ * advices não irão funcionar)
+ * 
  */
-abstract class AbstractAspectDelegate extends AbstractObject {
+abstract class AbstractDelegate extends AbstractObject {
+  
+  public $calledMethod = null;
+  public $calledArguments = array();
   
   /**
    * Wrapper para métodos de um AbstractAspect
@@ -60,6 +67,10 @@ abstract class AbstractAspectDelegate extends AbstractObject {
     $advices = $delegator->getAdvices($this);
     
     if (isset($advices[$name])) {
+      
+      // define propriedades para serem acessiveis pelo advice
+      $this->calledMethod = $name;
+      $this->calledArguments = $arguments;
       
       // para entender a logica do codigo abaixo,
       // ver: https://code.google.com/p/ajaxpect/wiki/UsageExample
@@ -95,6 +106,9 @@ abstract class AbstractAspectDelegate extends AbstractObject {
       // (ou lançar a mesma exception)
       $advice->afterFinally();
       
+      // o hack acima do finally foi feito porque o try.catch.finally só tem suporte
+      // a partir do php5.5
+      
       return $result;
       
     } else {
@@ -104,7 +118,7 @@ abstract class AbstractAspectDelegate extends AbstractObject {
   }
   
   public function __callStatic($name, $arguments) {
-    ;
+    ;//TODO
   }
   
 }

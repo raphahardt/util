@@ -9,7 +9,7 @@ abstract class Advice extends AbstractObject {
   public $priority = null;
   protected $Delegate = null;
   
-  public function setDelegate(\Djck\system\AbstractAspectDelegate $delegate) {
+  public function setDelegate(\Djck\system\AbstractDelegate $delegate) {
     $this->Delegate = $delegate;
   }
   
@@ -61,11 +61,11 @@ abstract class Advice extends AbstractObject {
    * Recebe como parametro a exception lançada. Este método pode ignorar a exception
    * para continuar com o fluxo natural, ou re-lançar a mesma exception.
    * 
-   * @param \Exception $throwed
+   * @param \Exception $thrown
    * @throws \Exception
    */
-  public function afterThrowing(\Exception $throwed) {
-    throw $throwed;
+  public function afterThrowing(\Exception $thrown) {
+    throw $thrown;
   }
   
   /**

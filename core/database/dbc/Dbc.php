@@ -41,6 +41,7 @@ class Dbc extends AbstractSingleton {
    * @param string $config Nome da configuração de conexão. Padrão: 'default'
    */
   public function __construct($config = null) {
+    parent::__construct();
 
     if (!isset($config)) {
       $config = 'default';

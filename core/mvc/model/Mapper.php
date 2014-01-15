@@ -85,6 +85,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
   private $autocommit = true;
   
   public function __construct() {
+    parent::__construct();
     $this->result = new types\StorageArray();
     //$this->result = array();
   }
@@ -227,11 +228,12 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     if (!$where) $where = array();
     
     // primeiro tenta ver se tem id para alterar
-    if ($this->_dirties == 1 && empty($where) && ($id = $this->getPointerValue())) {
+    if ($this->_is_dirty && $this->_dirties == 0 && empty($where) && ($id = $this->getPointerValue())) {
       $new_data = $this->data;
       
       $offset = $this->find($id);
       if ($offset !== false) {
+        var_dump($offset);
         // se for id, muda só 1 registro
         $this->set($new_data);
         $this->refresh();

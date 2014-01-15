@@ -68,6 +68,7 @@ class Model extends AbstractObject implements \ArrayAccess, \Countable, \Iterato
   public $Mapper = null;
   
   public function __construct() {
+    parent::__construct();
     // configurações default - colocar aqui
     // replica para todos os Models, de todas as aplicações!
     

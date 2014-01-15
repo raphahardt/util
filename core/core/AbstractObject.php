@@ -9,6 +9,22 @@ namespace Djck\system;
  */
 abstract class AbstractObject {
   
+  public function __construct() {
+    // roda todas as pré-configurações
+    $this->cfg();
+  }
+  
+  /**
+   * Função que todos os objetos podem definir e servem como configurador dos mesmos.
+   * 
+   * Útil para controllers que precisam fazer uma pré-configuração dos advices (criar aspectos)
+   * 
+   * @return type
+   */
+  protected function cfg() {
+    return;
+  }
+  
   public function callMethod($method, $params = array()) {
     if (!method_exists($this, $method)) {
       throw new \BadMethodCallException("Method '$method' not exists in ".get_class($this));

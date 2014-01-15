@@ -7,24 +7,48 @@ require 'core/bootstrap.php';
 use Djck\model\Model as NewModel;
 Core::import('Model', 'Djck\model');
 
-$model = new NewModel();
-$registro = $model->create();
-$registro['col1'] = 'bbb';
-unset($registro);
+class AModel extends NewModel {
+  
+  public function __construct() {
+    
+    // cria o mapper que é como o model vai manipular os dados e que tipo de persistencia será usada
+    $mapper = new mvc\mappers\TempMapper();
+    $mapper->setFields(array(
+        new database\query\Field('id'),
+        new database\query\Field('coluna1'),
+        new database\query\Field('col2'),
+        new database\query\Field('col3'),
+    ));
+    $mapper->setEntity('');
+    
+    // faz as definições para o model
+    $this->setMapper($mapper);
+    
+    parent::__construct();
+  }
+  
+}
 
-$registro2 = $model->create();
-$registro2['col1'] = 'ccc';
+$model = AModel::getInstance();
+$reg = $model->create();
+$reg['coluna1'] = 'João da Silva';
+$reg['col2'] = 'Rua A, 123';
+$reg['col3'] = 'Sao paulo';
 
-echo '<pre>';
-dump($model);
+$reg2 = $model->create();
+$reg2['coluna1'] = 'Maria José';
+$reg2['col2'] = 'Rua B, 456';
+$reg2['col3'] = 'Campinas';
 
-$model->save();
-dump($model);
+$model->digest();
 
-$r = $model->get(2);
-dump($r['col1']);
-$r['col1'] = 'opopop';
-dump($registro2['col1']);
+$reg2['col2'] = 'AAAA';
+//$reg2['coluna1'] = 'joao';
+//$reg2->delete();
+//$reg3 = $model->create();
+//$reg3['coluna1'] = 'ookokokoko';
+
+$model->digest();
 
 dump($model);
 

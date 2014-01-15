@@ -3,14 +3,14 @@
 namespace Djck\mvc;
 
 use Djck\Core;
-use Djck\system\AbstractAspectDelegate;
+use Djck\system\AbstractDelegate;
 
 use Djck\network\Request;
 use Djck\network\Response;
 
 Core::registerPackage('Djck\mvc:controller\exceptions');
 
-abstract class Controller extends AbstractAspectDelegate {
+abstract class Controller extends AbstractDelegate {
   
   /**
    * Objeto 
@@ -41,6 +41,8 @@ abstract class Controller extends AbstractAspectDelegate {
   public $viewPath = null;
   
   public function __construct() {
+    parent::__construct();
+    
     global $Session;
     
     if (isset($Session))

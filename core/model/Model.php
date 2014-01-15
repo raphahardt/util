@@ -8,10 +8,10 @@ use Djck\system\AbstractObject;
 class Model extends AbstractSingleton {
   
   protected $entity;
-  protected $columns = array();
-  protected $from = -1;
-  protected $to = -1;
-  protected $limit = -1;
+  public $columns = array();
+  public $from = -1;
+  public $to = -1;
+  public $limit = -1;
   
   /**
    *
@@ -25,6 +25,14 @@ class Model extends AbstractSingleton {
    */
   protected $Registers = array();
   
+  public function setMapper(\Djck\mvc\Mapper $Mapper) {
+    $this->columns = $Mapper->getFields();
+    $this->entity = $Mapper->getEntity();
+    
+    $this->Mapper = $Mapper;
+  }
+
+
   public function destroy() {
     
   }
@@ -72,16 +80,68 @@ class Model extends AbstractSingleton {
   // persiste as alterações feitas nos registros ou nas coleções
   public function digest() {
     
-    foreach ($this->Registers as $register) {
+    foreach ($this->Registers as $i => $register) {
       if ($register->isDirty()) {// só altera na persistencia se estiver "sujo" (alterado)
         
         // verifica se foram selecionadas colunas para alterar, se não, usar somente colunas
         // que foram alteradas
         if (!empty($this->columns)) {
+          $update_columns = $this->columns;
+        } else {
+          $update_columns = $register->getUpdatedColumns();
+        }
+        
+        // reseta o mapper
+        $Mapper =& $this->Mapper;
+        $Mapper->setFilter(array());
+        //$Mapper->setStart(0);
+        //$Mapper->setLimit(0);
+        
+        if ($register->isPersisted() || $register->isDeleted()) {
+          if ($register instanceof ModelCollection) {
+            $Mapper->setFilter($register->getFilter());
+          } else {
+            // FIXME arrumar essa gambiarra
+            $Mapper->setFilter(new \Djck\database\query\Criteria($Mapper->id, '=', $register['id']));
+          }
+          //$Mapper->setStart($register->from);
+          //$Mapper->setLimit($register->to >= 0 ? ($register->to - $register->from) : $register->limit);
+        }
+        
+        if ($register->isDeleted()) {
+          // se estiver deletado, deleta
+          if ($Mapper->delete() > 0) {
+            unset($this->Registers[$i]); // apaga ref do register do model (memoria)
+          } else {
+            throw new \Exception('Não foi possível excluir o registro');
+          }
+        } else {
+          // altera os valores de cada campo (passa o que estava no register pro mapper)
+          foreach ($update_columns as $col) {
+            $Mapper[$col->getAlias()] = $register[$col->getAlias()];
+          }
+        }
+        
+        if ($register->isPersisted()) {
+          // se já estiver persistido, fazer update
+          if ($Mapper->update($update_columns) == 0) {
+            //throw new \Exception('Não foi possível alterar o registro');
+          }
           
         } else {
-          
+          // se não, fazer insert
+          $Mapper->push();
+          if ($Mapper->insert() > 0) {
+            $Mapper->last();
+            $register['id'] = $Mapper['id'];
+            $register->persisted = true;
+          } else {
+            throw new \Exception('Não foi possível inserir o registro');
+          }
         }
+        
+        $register->dirty = false;
+        //$Mapper->commit();
       }
     }
     
@@ -91,76 +151,90 @@ class Model extends AbstractSingleton {
   // do model
   // ex: $model->columns('cmapo1', 'campo2')->get(12);
   function columns($fields = array()) {
-    $stmt =& $this->_openStatement();
-    $stmt['columns'] = $fields;
+    $this->columns = $fields;
     return $this;
   }
   
   function from($offset) {
-    $stmt =& $this->_openStatement();
-    $stmt['from'] = $offset;
+    $this->from = $offset >= 0 ? (int)$offset : -1;
     return $this;
   }
   
   function to($offset) {
-    $stmt =& $this->_openStatement();
-    $stmt['to'] = $offset;
+    $this->to = $offset >= 0 ? (int)$offset : -1;
     return $this;
   }
   
   function limit($offset) {
-    $stmt =& $this->_openStatement();
-    $stmt['limit'] = $offset;
+    $this->limit = $offset >= 0 ? (int)$offset : -1;
     return $this;
-  }
-  
-  
-  protected function &_openStatement() {
-    if (!isset($this->_opened_stmt)) {
-      $this->_opened_stmt = array();
-    }
-    return $this->_opened_stmt;
   }
 
 }
 
 class ModelRegister extends AbstractObject implements \ArrayAccess {
   
-  public $stmt;
+  public $columns = array();
+  public $from = -1;
+  public $to = -1;
+  public $limit = -1;
   
-  public function __destruct() {
-    ;
+  protected $data = array();
+  
+  public $dirty = false;
+  public $persisted = false;
+  public $deleted = false;
+  
+  public function __construct(Model $Model) {
+    
+    $this->columns = $Model->columns;
+    $this->from = $Model->from;
+    $this->to = $Model->to;
+    $this->limit = $Model->limit;
+    
+    parent::__construct();
   }
   
   public function offsetExists($offset) {
-    return isset($this->stmt['register']['data'][$offset]);
+    return isset($this->data[$offset]);
   }
 
   public function offsetGet($offset) {
-    return $this->stmt['register']['data'][$offset];
+    return $this->data[$offset];
   }
 
   public function offsetSet($offset, $value) {
-    if ($this->stmt['register']['flag'] == 'persisted') {
-      $this->stmt['register']['flag'] = 'changed';
-    }
-    $this->stmt['register']['data'][$offset] = $value;
+    $this->dirty = true;
+    $this->data[$offset] = $value;
   }
 
   public function offsetUnset($offset) {
-    unset($this->stmt['register']['data'][$offset]);
+    unset($this->data[$offset]);
   }
-
-  public function __call($name, $arguments) {
-    switch ($name) {
-      case 'create':
-      case 'get':
-      case 'getAll':
-      case 'columns':
-        throw new \Exception('Método não existe');
-      default:
-        //return $this->model->callMethod($name, $arguments);
-    }
+  
+  public function delete() {
+    $this->dirty = true;
+    $this->deleted = true;
+  }
+  
+  public function setData($data) {
+    $this->data = $data;
+  }
+  
+  public function getData() {
+    return $this->data;
+  }
+  
+  public function isDirty() {
+    return (bool)$this->dirty;
+  }
+  
+  public function isPersisted() {
+    return (bool)$this->persisted;
+  }
+  
+  public function isDeleted() {
+    return (bool)$this->deleted;
   }
   
 }
