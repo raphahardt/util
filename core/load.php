@@ -182,7 +182,7 @@ if ($_SESSION['logged']) {
  * junto o token e conferindo com o da sessão.
  */
 def('TOKEN', $_SESSION[SESSION_TOKEN_NAME]);
-
+unset($session_class);
 
 // -------------------------------------------------------------------------------------
 // configurações de email (MailerAccounts.neon) ----------------------------------------
@@ -247,4 +247,4 @@ def('LANG_STR', $lang);
  */
 def('LANG_STR_ALT', $lang_alt);
 
-unset($cfg, $url_parts, $_parts, $lang, $lang_alt); // evita variaveis globais indesejadas no sistema
+unset($cfg, $url_parts, $_parts, $lang, $lang_alt, $langs); // evita variaveis globais indesejadas no sistema

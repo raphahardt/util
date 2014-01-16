@@ -42,14 +42,21 @@ $reg2['col3'] = 'Campinas';
 
 $model->digest();
 
-$reg2['col2'] = 'AAAA';
+$reg['col2'] = 'AAAA';
 //$reg2['coluna1'] = 'joao';
 //$reg2->delete();
-//$reg3 = $model->create();
-//$reg3['coluna1'] = 'ookokokoko';
+$model->delete($reg2);
+$reg3 = $model->create();
+$reg3['coluna1'] = 'ookokokoko';
+$model->digest();
+
+$reg2b = $model->get(3);
+$reg2b['col2'] = 'CCC';
+$reg['col2'] = 'DDD';
 
 $model->digest();
 
+dump($reg2);
 dump($model);
 
 finish();

@@ -233,7 +233,6 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
       
       $offset = $this->find($id);
       if ($offset !== false) {
-        var_dump($offset);
         // se for id, muda só 1 registro
         $this->set($new_data);
         $this->refresh();
@@ -286,7 +285,10 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
         // se escolheu os campos, usar
         $updated_values = array();
         foreach ($fields as $f) {
-          $updated_values[ $f->getAlias() ] = $this->data[ $f->getAlias() ];
+          if ($f instanceof query\interfaces\HasAlias) {
+            $f = $f->getAlias();
+          }
+          $updated_values[ $f ] = $this->data[ $f ];
         }
       }
 
@@ -300,8 +302,12 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
           $this[$field] = $val;
         }
         $this->refresh();
+        $this->_removeFlag($i, self::DIRTY);
+        --$this->_dirties;
+        
         ++$affected;
       }
+      $this->_is_dirty = ($this->_dirties > 0);
 
       // reseta ponteiro
       $this->first();
@@ -334,7 +340,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     $pointer = $this->getPointer();
     $affected = 0;
     //foreach ($this->result as $i => $_) {
-    for ($i = $this->result->count();$i>= 0; $i--) { // faço invertido pois é mais provavel que seja usado push() do que unshift()
+    for ($i = $this->result->count()-1;$i>= 0; $i--) { // faço invertido pois é mais provavel que seja usado push() do que unshift()
       
       if ($this->_isFlag($i, (self::PERSISTED | self::DIRTY))) {
         continue;
