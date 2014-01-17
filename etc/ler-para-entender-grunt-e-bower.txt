@@ -1,0 +1,8 @@
+// bordas em gradiente
+http://stackoverflow.com/questions/2717127/css3-gradient-borders
+
+// grunt
+http://tableless.com.br/grunt-voce-deveria-estar-usando/
+
+// bower
+http://simplesideias.com.br/gerenciando-dependencias-client-side-com-bower
