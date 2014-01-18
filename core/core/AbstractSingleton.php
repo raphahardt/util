@@ -3,9 +3,9 @@
 namespace Djck\system;
 
 use Djck\Core;
-use Djck\system\AbstractObject;
+use Djck\system\AbstractDelegate;
 
-abstract class AbstractSingleton extends AbstractObject {
+abstract class AbstractSingleton extends AbstractDelegate {
 
   /**
    * Guarda as instancias singletons das classes instanciadas.

@@ -30,7 +30,7 @@ class LogAdvice extends \Djck\aspect\Advice {
 // classe normal que será delegate (ou seja, será envolvida por uma join point e se tornará um aspecto)
 class TesteQualquer extends \Djck\system\AbstractAspectDelegate {
   
-  protected function cfg() {
+  protected function setup() {
     
     // registrando os advices para criar os aspectos
     $delegator = \Djck\system\AspectDelegator::getInstance();

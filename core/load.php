@@ -10,8 +10,8 @@ use Djck\Core;
  */
 // essentials
 Core::import('AbstractObject',         '/core/core');
+Core::import('AbstractDelegate',       '/core/core');
 Core::import('AbstractSingleton',      '/core/core');
-Core::import('AbstractDelegate', '/core/core');
 
 // types
 Core::importPackage('Djck\types');
@@ -26,8 +26,8 @@ Core::import('AspectDelegator', '/core/core');
 Core::import('Dispatcher',      '/core/core');
 
 // database
-Core::import('DbcConfig', 'Djck\database:dbc');
-Core::import('Dbc',       'Djck\database:dbc');
+Core::import('DbcConfig', 'Djck\database');
+Core::import('Dbc',       'Djck\database');
 Core::importPackage('Djck\database\query');
 
 // mvc

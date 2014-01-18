@@ -6,7 +6,7 @@ use Djck\Core;
 use Djck\database\DbcConfig;
 use Djck\system\AbstractSingleton;
 
-Core::registerPackage('Djck\database:dbc\exceptions');
+Core::registerPackage('Djck\database\exceptions');
 
 class Dbc extends AbstractSingleton {
 

@@ -11,7 +11,7 @@ abstract class AbstractObject {
   
   public function __construct() {
     // roda todas as pré-configurações
-    $this->cfg();
+    $this->setup();
   }
   
   /**
@@ -21,7 +21,7 @@ abstract class AbstractObject {
    * 
    * @return type
    */
-  protected function cfg() {
+  protected function setup() {
     return;
   }
   

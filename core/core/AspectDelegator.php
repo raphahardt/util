@@ -138,7 +138,7 @@ class AspectDelegator extends AbstractSingleton {
         $method_name = $method->getName();
         // nomes de metodos reservados, não usar advices para eles
         switch ($method_name) {
-          case 'cfg':
+          case 'setup':
           case 'callMethod':
           case 'callStaticMethod':
           case 'getInstance':
