@@ -84,6 +84,9 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
   
   private $autocommit = true;
   
+  protected $transactions = 0;
+  protected $querys_executed = 0;
+  
   public function __construct() {
     parent::__construct();
     $this->result = new types\StorageArray();
@@ -201,6 +204,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     // guarda os valores atuais para log de alteracao
     if ($num_rows) {
       $this->saveState();
+      ++$this->querys_executed;
     }
 
     return $num_rows; // retorna o registro fetchado
@@ -369,6 +373,10 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     // então prefiro zerar no final essa var toda vez que der um insert
     $this->_inserts = 0;
     
+    // jogo o ponteiro pro final automaticamente, para o registro atual ficar preenchido com o last insert id
+    // esse hack serve apenas para mappers temporarios, em dbcmapper isso nao é necessario
+    $this->last();
+    
     return $affected;
   }
   
@@ -440,6 +448,18 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
   }
   
   /**
+   * Reseta tudo o que foi setado como propriedade para o mapper (filtros, limits, etc)
+   * 
+   */
+  public function reset() {
+    $this->_filtered_result = array(); // limpa os resultados filtrados anteriormente, importante
+    $this->filters = array();
+    $this->offset = 0;
+    $this->limit = 0;
+    $this->order = array();
+  }
+  
+  /**
    * Retorna o index do ponteiro interno
    * @return int
    */
@@ -487,6 +507,10 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
    */
   public function getData() {
     return $this->data;
+  }
+  
+  public function getResult() {
+    return $this->result;
   }
   
   /**
@@ -707,12 +731,26 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     }
   }
   
+  public function beginTransaction() {
+    ++$this->transactions;
+    $this->autoCommit( $this->transactions == 0 );
+  }
+  
+  private function _endTransaction() {
+    if ($this->transactions > 0) {
+      --$this->transactions;
+      $this->autoCommit( $this->transactions == 0 );
+    }
+    $this->querys_executed = 0;
+  }
+  
   /**
    * Salva todos os dados no result em um ambiente persistente (banco de dados, arquivo, etc)
    * @return boolean
    */
   public function commit() {
     // nao faz nada: o mapper temporario fica com seus dados todos no result
+    $this->_endTransaction();
     return true;
   }
   
@@ -724,6 +762,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
    */
   public function rollback() {
     // nao faz nada: o mapper temporario fica com seus dados todos no result
+    $this->_endTransaction();
     return;
   }
   
@@ -939,7 +978,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
   protected function _filterResult($filter=array()) {
     if (empty($filter)) {
       $this->_filtered_result = array();
-      return 0;
+      return $this->count;
     }
     // se o filtro for o mesmo, nao precisa filtrar de novo...
     // a menos que tenha sido passado um order e, entre um select() e outro, tenha

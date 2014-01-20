@@ -43,20 +43,32 @@ $reg2['col3'] = 'Campinas';
 $model->digest();
 
 $reg['col2'] = 'AAAA';
-//$reg2['coluna1'] = 'joao';
+$reg2['coluna1'] = 'joao';
 //$reg2->delete();
-$model->delete($reg2);
+//$model->delete($reg2);
+
 $reg3 = $model->create();
 $reg3['coluna1'] = 'ookokokoko';
+$reg3['col3'] = 'SSSSookokokoko';
+
+//dump($model);
 $model->digest();
 
 $reg2b = $model->get(3);
 $reg2b['col2'] = 'CCC';
-$reg['col2'] = 'DDD';
+$reg['col3'] = 'DDD';
 
 $model->digest();
 
-dump($reg2);
+$allregs = $model->orderBy('id', true)->limit(2)->getAll();
+foreach ($allregs as $r) {
+  dump($r);
+  dump($r['coluna1']);
+}
+
+echo '<hr>';
+
+//dump($reg2);
 dump($model);
 
 finish();

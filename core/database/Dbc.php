@@ -75,6 +75,7 @@ class Dbc extends AbstractSingleton {
     try {
       // define o charset utilizado
       $this->con->set_charset($config_params['#charset']);
+      $this->con->autocommit((bool)$this->autocommit);
       $this->charset = $config_params['#charset'];
       
     } catch (\mysqli_sql_exception $e) {

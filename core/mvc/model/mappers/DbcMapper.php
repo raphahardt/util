@@ -34,23 +34,8 @@ class DbcMapper extends Mapper implements interfaces\DatabaseMapper {
    */
   protected $dbc;
   
-  /**
-   *
-   * @var Djck\database\query\Field[]
-   */
-  protected $fields;
-  
-  /**
-   *
-   * @var Djck\database\query\base\ExpressionBase[]
-   */
-  protected $filters;
-  
-  protected $offset = 0;
   protected $limit = self::MAX_LIMIT_COLLECTION;
   protected $max_limit = self::MAX_LIMIT_COLLECTION;
-  
-  protected $order = array();
   
   protected $permanent_delete = true;
   
@@ -59,9 +44,6 @@ class DbcMapper extends Mapper implements interfaces\DatabaseMapper {
   // count de todos os registros que tem na tabela, independente de limit. deve-se usar total()
   protected $count_geral = 0;
   
-  // serve como base para dados que vierem para serem alterados ou inseridos
-  private $_fields_array = array();
-  private $_pristine_data = array();
   
   public function init() {
     if (!isset($this->dbc)) {
@@ -97,18 +79,6 @@ class DbcMapper extends Mapper implements interfaces\DatabaseMapper {
     return null;
   }
   
-  public function nullset() {
-    parent::nullset();
-    $this->data = $this->_fields_array; // limpa com os campos da tabela
-    $this->saveState();
-  }
-  
-  public function set($data) {
-    parent::set($data);
-    $this->data = $this->_diff($this->_fields_array, $this->data); // preenche os campos que faltaram
-    $this->saveState();
-  }
-  
   // retornará somente os registros persistentes
   public function count() {
     return $this->count_persisted;
@@ -117,153 +87,6 @@ class DbcMapper extends Mapper implements interfaces\DatabaseMapper {
   // retornará todos os registros, independente de limit
   public function total() {
     return $this->count_geral;
-  }
-  
-  public function push($data = null, $flag = self::FRESH) {
-    if (is_array($data) && !empty($data)) {
-      $data = $this->_diff($this->_fields_array, $data); // preenche os campos que faltaram
-    }
-    parent::push($data, $flag);
-    
-    // o count só retornará registros persistentes
-    if ($flag == self::PERSISTED) {
-      ++$this->count_persisted;
-      ++$this->count_geral;
-    }
-  }
-  public function pop() {
-    $last = end($this->result);
-    if ($last['flag'] == self::PERSISTED) {
-      --$this->count_persisted;
-      --$this->count_geral;
-    }
-    return parent::pop();
-  }
-
-  public function unshift($data = null, $flag = self::FRESH) {
-    if (is_array($data) && !empty($data)) {
-      $data = $this->_diff($this->_fields_array, $data); // preenche os campos que faltaram
-    }
-    parent::unshift($data, $flag);
-    
-    // o count só retornará registros persistentes
-    if ($flag == self::PERSISTED) {
-      ++$this->count_persisted;
-      ++$this->count_geral;
-    }
-  }
-  public function shift() {
-    $last = reset($this->result);
-    if ($last['flag'] == self::PERSISTED) {
-      --$this->count_persisted;
-      --$this->count_geral;
-    }
-    return parent::shift();
-  }
-  
-  public function splice($offset, $len = 1) {
-    if ($len >= 1) {
-      for($i=$offset;$i<$offset+$len;$i++) {
-        if ($this->result[$i]['flag'] == self::PERSISTED) {
-          if ($this->_delete($this->result[$i]['data'][$this->getPointer()]) > 0) { 
-            --$this->count_persisted;
-            --$this->count_geral;
-          }
-        }
-      }
-    }
-    return parent::splice($offset, $len);
-  }
-  
-  public function remove($pointer = null) {
-    if (!isset($pointer)) {
-      $pointer = $this->data[ $this->getPointer() ];
-    }
-    if (parent::remove($pointer)) {
-      if ($this->_delete($pointer) > 0) { 
-        --$this->count_persisted;
-        --$this->count_geral;
-        return true;
-      }
-    }
-    return false;
-  }
-  
-  public function clearResult() {
-    parent::clearResult();
-    $this->count_persisted = 0;
-    $this->count_geral = 0;
-  }
-  
-  public function setOrderBy($orders) {
-    if (!is_array($orders) || empty($orders)) return false;
-    
-    $this->order = array();
-    foreach ($orders as $o) {
-      if (is_array($o)) {
-        $direction = $o[1];
-        $o = $o[0];
-        $o->setOrder($direction);
-      }
-      $this->order[] = $o;
-    }
-  }
-  
-  public function setOffset($offset) {
-    if ($offset < 0) $offset = 0;
-    //if ($start > $this->limit) $start = $this->limit;
-    $this->offset = $offset;
-  }
-  
-  public function setStart($offset) {
-    $this->setOffset($offset);
-  }
-  
-  public function setLimit($limit) {
-    if ($limit > PHP_INT_MAX) $limit = PHP_INT_MAX;
-    //if ($limit < $this->start) $limit = $this->start;
-    $this->limit = $limit;
-  }
-  
-  public function setMaxLimit($limit) {
-    if ($limit > PHP_INT_MAX) $limit = PHP_INT_MAX;
-    //if ($limit < $this->start) $limit = $this->start;
-    $this->max_limit = $limit;
-  }
-  
-  /**
-   * Define os campos dos registros. Nos arquivos servirão de cabeçalho. Nos outros formatos
-   * como json ou xml, serão propriedades
-   * (É protected pois não é possivel alterar os campos em tempo de execução, só ao criar a
-   * instancia __construct)
-   * @param mixed $entity
-   * @access protected
-   */
-  public function setFields($fields) {
-    $this->fields = array();
-    $this->_fields_array = array();
-    foreach ($fields as $f) {
-      $this->fields[$f->getHash()] = $f;
-      $this->_fields_array[$f->getAlias()] = null;
-    }
-  }
-  
-  /**
-   * Retorna os campos definidos
-   * @return mixed
-   */
-  public function getFields() {
-    return $this->fields;
-  }
-  
-  /**
-   * Grava os valores atuais numa variável interna. Serve para criar o log na alteração
-   * de valores.
-   */
-  public function saveState() {
-    foreach ($this->data as $k => $f) {
-      $this->_pristine_data[$k] = $f;
-    }
   }
   
   public function select() {
@@ -312,7 +135,7 @@ class DbcMapper extends Mapper implements interfaces\DatabaseMapper {
             $row = array_change_key_case($row, CASE_LOWER);
             
             // transforma algum campo data em objeto
-            foreach ($row as &$col) {
+            /*foreach ($row as &$col) {
               // parece data..
               if (types\DateTime::seemsDateTime($col)) {
                 // lê a data e cria time baseado nisso
@@ -323,7 +146,7 @@ class DbcMapper extends Mapper implements interfaces\DatabaseMapper {
                 $col = new types\DateTime(mktime($hour, $minute, $second, $month, $day, $year));
               }
             }
-            unset($col);
+            unset($col);*/
             
             // adiciona cada registro no collection interno
             $this->push($row, self::PERSISTED);
@@ -692,22 +515,6 @@ class DbcMapper extends Mapper implements interfaces\DatabaseMapper {
    * É usado para as instruções de UPDATE e INSERT só alterarem os campos alterados
    * @return type
    */
-  protected function _getUpdatedValues() {
-    if (!$this->data) return array();
-    $fields = array();
-    foreach ($this->data as $k => $v) {
-      if ($v != $this->_pristine_data[$k]) {
-        $fields[$k] = $v;
-      }
-    }
-    return $fields;
-  }
-  
-  /**
-   * Função auxiliar que retorna apenas os campos que foram definidos valores.
-   * É usado para as instruções de UPDATE e INSERT só alterarem os campos alterados
-   * @return type
-   */
   public function isDirty() {
     if (!$this->data) return false;
     foreach ($this->data as $k => $v) {
@@ -716,10 +523,6 @@ class DbcMapper extends Mapper implements interfaces\DatabaseMapper {
       }
     }
     return false;
-  }
-  
-  public function _to_dump($sql, $values) {
-    file_put_contents(CMS.DS.'log.sql', "==============================================\n\n$sql\n\n".print_r($values, true), FILE_APPEND);
   }
   
 }
