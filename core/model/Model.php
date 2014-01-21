@@ -31,6 +31,7 @@ class Model extends AbstractSingleton implements \Countable {
     //$this->entity = $Mapper->getEntity();
     
     $this->Mapper = $Mapper;
+    $this->Mapper->init();
   }
 
 
@@ -156,6 +157,7 @@ class Model extends AbstractSingleton implements \Countable {
     
     $Mapper =& $this->Mapper;
     $Mapper->beginTransaction();
+    $id_field = $Mapper->getPointer();
     
     try {
       foreach ($this->Registers as $i => $register) {
@@ -181,7 +183,7 @@ class Model extends AbstractSingleton implements \Countable {
               
             } else {
               // FIXME arrumar essa gambiarra
-              $Mapper->setFilter(array(new \Djck\database\query\Criteria($Mapper->id, '=', $register['id'])));
+              $Mapper->setFilter(array(new \Djck\database\query\Criteria($Mapper->{$id_field}, '=', $register[ $id_field ])));
             }
           }
 
@@ -209,9 +211,9 @@ class Model extends AbstractSingleton implements \Countable {
               // se não, fazer insert
               $Mapper->push();
               if ($Mapper->insert() > 0) {
-                $id = $Mapper['id'];
+                $id = $Mapper[ $id_field ];
                 
-                $register['id'] = $id;
+                $register[ $id_field ] = $id;
                 $register->setPersisted();
                 
                 // define um novo key para o register, para ser facilmente achado pelo get()

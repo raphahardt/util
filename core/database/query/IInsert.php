@@ -39,13 +39,27 @@ extends base\InstructionBase {
     $s = 'INSERT INTO ';
     $s .= $this->entity . ' '. $this->entity->getAlias();
     $s .= ' (';
-    $s .= implode(', ', $this->fields);
+    //$s .= implode(', ', $this->fields);
+    $sSel = '';
+    foreach ($this->fields as $key => $field) {
+      $sSel .= ( empty($sSel) ? '' : ', ' );
+      if ($field instanceOf base\Base) {
+        $sSel .= (string)$field;
+      } else {
+        $sSel .= (string)$this->entity->getField($key);
+      }
+    }
+    $s .= $sSel;
     $s .= ') VALUES (';
     
     $sSel = '';
-    foreach ($this->fields as $field) {
+    foreach ($this->fields as $key => $field) {
       $sSel .= ( empty($sSel) ? '' : ', ' );
-      $sSel .= self::parseValue($field->getValue());
+      if ($field instanceOf base\Base) {
+        $sSel .= self::parseValue($field->getValue());
+      } else {
+        $sSel .= self::parseValue($field);
+      }
     }
     $s .= $sSel;
     $s .= ')';

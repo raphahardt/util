@@ -64,7 +64,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
   
   // identificador do registro
   // pode ser uma SQLExpression (Dbc), o numero da linha (file), um id, um index de array, etc..
-  protected $pointer = array('id' => null);
+  protected $pointer = 'id';
   
   // guarda os registros retornados pelo find() ou filter(), e o ponteiro quem vai lidar
   // com o registro unico. o mapper funcionará como um recordset
@@ -283,18 +283,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     $affected = 0;
     
     if ($num_rows > 0) {
-      if (empty($fields)) {
-        $updated_values = $this->_getUpdatedValues(); // só valores que foram alterados
-      } else {
-        // se escolheu os campos, usar
-        $updated_values = array();
-        foreach ($fields as $f) {
-          if ($f instanceof query\interfaces\HasAlias) {
-            $f = $f->getAlias();
-          }
-          $updated_values[ $f ] = $this->data[ $f ];
-        }
-      }
+      $updated_values = $this->_getUpdatedValues($fields); // só valores que foram alterados
 
       foreach ($this->_filtered_result as $i => $_) {
         if ($i < 0) {
@@ -442,7 +431,6 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     //$this->data = null;
     $this->_setData($this->data, null);
     $this->saveState(); // pristine
-    $this->pointer = array($this->getPointer() => null);
     // se o registro atual é apagado, o ponteiro interno deve apontar pra algo que nao exista
     $this->internal_pointer = -1; // VER O QUE ISSO IMPACTA
   }
@@ -483,7 +471,6 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     
     $this->_setData($this->data, $values);
     $this->saveState();
-    $this->pointer = array($id => $data[$id]);
   }
   
   /**
@@ -645,7 +632,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
    * @return boolean
    */
   public function exists() {
-    return $this->data !== null || current($this->pointer) !== null;
+    return $this->data !== null;
   }
   
   /**
@@ -867,7 +854,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     if ($pointer instanceof query\base\HasAlias) {
       $pointer = $pointer->getAlias();
     }
-    $this->pointer = array($pointer => $initval);
+    $this->pointer = $pointer;
   }
   
   /**
@@ -875,7 +862,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
    * @return string
    */
   public function getPointer() {
-    return key($this->pointer);
+    return $this->pointer;
   }
   
   /**
@@ -883,7 +870,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
    * @return string
    */
   public function getPointerValue() {
-    return reset($this->pointer);
+    return $this->data[$this->pointer];
   }
   
   /**
@@ -1015,12 +1002,21 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
    * 
    * @return array
    */
-  protected function _getUpdatedValues() {
+  protected function _getUpdatedValues($force_fields = array()) {
     if (!$this->data) return array();
     $fields = array();
-    foreach ($this->data as $k => $v) {
-      if ($v != $this->_pristine_data[$k]) {
-        $fields[$k] = $v;
+    if (!empty($force_fields)) {
+      foreach ($force_fields as $f) {
+        if ($f instanceof query\interfaces\HasAlias) {
+          $f = $f->getAlias();
+        }
+        $fields[ $f ] = $this->data[ $f ];
+      }
+    } else {
+      foreach ($this->data as $k => $v) {
+        if ($v != $this->_pristine_data[$k]) {
+          $fields[$k] = $v;
+        }
       }
     }
     return $fields;
@@ -1100,6 +1096,12 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
    * - Nome de colunas
    * - Nome da entidade atual
    * - Filtro atual (alguns mappers)
+   * 
+   * Exemplo:
+   * $model->nome;  // retorna o campo 'nome' da tabela do model
+   * $model->nome->getValue(); // retorna o valor do campo 'nome'; ou
+   * $model['nome'];
+   * 
    */
   public function __get($name) {
     return $this->getField($name);
