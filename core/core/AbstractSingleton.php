@@ -10,7 +10,7 @@ abstract class AbstractSingleton extends AbstractDelegate {
   /**
    * Guarda as instancias singletons das classes instanciadas.
    * @static
-   * @var \AbstractSingleton 
+   * @var static[]
    */
   static private $_instances = array();
   
@@ -22,7 +22,8 @@ abstract class AbstractSingleton extends AbstractDelegate {
    * @param $arg0 Pode-se passar até 3 parametros pela inicialização
    * @param $arg1
    * @param $arg2 
-   * @return \AbstractSingleton
+   * @return static
+   * @throws \BadFunctionCallException
    */
   static public function getInstance() {
     
@@ -33,7 +34,7 @@ abstract class AbstractSingleton extends AbstractDelegate {
     }
     
     if ($class === __CLASS__) {
-      throw new BadMethodCallException('Você deve definir \'self::$_class = __CLASS__\' '
+      throw new \BadMethodCallException('Você deve definir \'self::$_class = __CLASS__\' '
               . 'na classe que chama este método');
     }
     
@@ -51,7 +52,7 @@ abstract class AbstractSingleton extends AbstractDelegate {
       // senão, instancia a classe na raiz
       $instances = &self::$_instances[$class];
     }
-    
+
     if (empty($instances)) {
       $instances = new $class($args[0], $args[1], $args[2]); // manda até 3 parametros para classe
     } else {
@@ -62,6 +63,7 @@ abstract class AbstractSingleton extends AbstractDelegate {
   
   /**
    * Deleta todas as instancias da classe criadas
+   * @throws \BadFunctionCallException
    */
   static public function destroyInstances() {
     if (function_exists('get_called_class')) { // PHP 5.3>=
@@ -71,7 +73,7 @@ abstract class AbstractSingleton extends AbstractDelegate {
     }
     
     if ($class === __CLASS__) {
-      throw new BadMethodCallException('Você deve definir \'self::$_class = __CLASS__\' '
+      throw new \BadMethodCallException('Você deve definir \'self::$_class = __CLASS__\' '
               . 'na classe que chama este método');
     }
     

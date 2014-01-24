@@ -12,7 +12,7 @@ class AModel extends NewModel {
   public function __construct() {
     
     // cria o mapper que é como o model vai manipular os dados e que tipo de persistencia será usada
-    $mapper = new mvc\mappers\TempMapper();
+    $mapper = new mvc\mappers\DbcMapper();
     $mapper->setFields(array(
         new database\query\Field('id'),
         new database\query\Field('coluna1'),
