@@ -150,11 +150,11 @@ implements interfaces\HasAlias, interfaces\Ordenable, interfaces\HasFunction,
           $sSel .= "($field) {$field->getAlias()}";
         /*} elseif ($field instanceof SQLTable) {
           $sSel .= $field->toAlias().'.*'; // TODO: pensar se isso aqui é realmente inteligente a se fazer*/
-        } elseif ($field instanceof base\HasAlias) {
+        } elseif ($field instanceof interfaces\HasAlias) {
           $sSel .= "$field";
           
           // verifica se faz group by automatico
-          if ($field instanceof base\HasFunction) {
+          if ($field instanceof interfaces\HasFunction) {
             $func = strtoupper($field->getFunction());
             
             if ( isset(self::$aggregateFunctions[$func]) ) {
@@ -186,7 +186,7 @@ implements interfaces\HasAlias, interfaces\Ordenable, interfaces\HasFunction,
       if ($entity instanceof ISelect) {
         $entity = "($entity)";
       }
-      if ($entity instanceof base\HasAlias) {
+      if ($entity instanceof interfaces\HasAlias) {
         $sFrom .= "$entity {$entity->getAlias()} ";
       } else {
         $sFrom .= $entity;
@@ -206,7 +206,7 @@ implements interfaces\HasAlias, interfaces\Ordenable, interfaces\HasFunction,
       $sGroup = '';
       foreach ($groupbyFields as $gfield) {
         $sGroup .= ( empty($sGroup) ? '' : ', ' );
-        if ($gfield instanceof base\HasFunction) {
+        if ($gfield instanceof interfaces\HasFunction) {
           $gfield->showFunctions(false);
           $sGroup .= $gfield;
           $gfield->showFunctions(true);
@@ -222,7 +222,7 @@ implements interfaces\HasAlias, interfaces\Ordenable, interfaces\HasFunction,
     
     $sOrder = '';
     foreach ($this->orderby as $order) {
-      if ($order instanceof base\Ordenable) {
+      if ($order instanceof interfaces\Ordenable) {
         $sOrder .= ( empty($sOrder) ? '' : ', ' );
         $sOrder .= "{$order->toAlias()} {$order->getOrder()}";
       }

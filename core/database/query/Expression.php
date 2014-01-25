@@ -26,9 +26,9 @@ implements interfaces\HasAlias, interfaces\HasOperator,
    * Cria uma expressão para filtragem de registros de um Model (ou Mapper)
    * 
    * @param string $operator Operador de ligação a ser usada na expressão. Pode ser OR ou AND
-   * @param string|base\Expressee $alias Alias para expressão (opcional)
-   * @param base\Expressee $expr Uma ou mais subexpressões que serão ligadas pelo operador
-   * @param base\Expressee $expr2 ... 
+   * @param string|interfaces\Expressee $alias Alias para expressão (opcional)
+   * @param interfaces\Expressee $expr Uma ou mais subexpressões que serão ligadas pelo operador
+   * @param interfaces\Expressee $expr2 ...
    * @throws exceptions\QueryException
    */
   public function __construct($operator, $alias = null, $expr = null) {
@@ -39,7 +39,7 @@ implements interfaces\HasAlias, interfaces\HasOperator,
       throw new exceptions\QueryException('Defina um operador para a expressão');
     }
     // primeiro definir o alias, para gerar o hash corretamente
-    if (!($alias instanceof base\Expressee) && is_string($alias)) {
+    if (!($alias instanceof interfaces\Expressee) && is_string($alias)) {
       $this->alias = $alias;
       if ($alias !== null) {
         unset($args[1]);
@@ -61,8 +61,8 @@ implements interfaces\HasAlias, interfaces\HasOperator,
   /**
    * Adiciona subexpressões a expressão atual.
    * 
-   * @param base\Expressee|scalar $expr Uma ou mais subexpressões a serem adicionadas
-   * @param base\Expressee|scalar $expr2 ...
+   * @param interfaces\Expressee|scalar $expr Uma ou mais subexpressões a serem adicionadas
+   * @param interfaces\Expressee|scalar $expr2 ...
    * @throws exceptions\QueryException
    */
   public function add($expr, $expr_ = null) {
@@ -100,7 +100,7 @@ implements interfaces\HasAlias, interfaces\HasOperator,
     return $this->expressees;
   }
   
-  // === base\HasAlias ===
+  // === interfaces\HasAlias ===
   public function setAlias($alias) {
     $this->alias = $alias;
   }
@@ -176,7 +176,7 @@ implements interfaces\HasAlias, interfaces\HasOperator,
       
       $s .= ( empty($s) ? '' : ' '.$this->operator.' ' );
       
-      if ($exp instanceof base\Negable) {
+      if ($exp instanceof interfaces\Negable) {
         $s .= (($exp->getNegate() == true) ? ' NOT ':'');
       }
       

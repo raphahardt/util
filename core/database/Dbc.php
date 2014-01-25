@@ -84,6 +84,7 @@ class Dbc extends AbstractSingleton {
 
     // limpa variaveis internas 
     // FIXME: talvez não precise dessa chamada...
+    @unlink(TEMP_PATH.DS.'log.sql');
     $this->reinit();
   }
 
@@ -251,6 +252,8 @@ class Dbc extends AbstractSingleton {
    */
   public function execute() {
 
+    $success = false;
+
     // pega a instrução executada pelo parse
     $index = $this->stmt_index;
 
@@ -314,9 +317,7 @@ class Dbc extends AbstractSingleton {
       catch (\mysqli_sql_exception $e) {  
         throw new exceptions\DbcFailedExecuteException($e);
       }
-      
-      // retorna se o query foi executado com sucesso
-      return $success;
+
     } 
     else {
       // binda os parametros temporarios antes guardados
@@ -353,8 +354,10 @@ class Dbc extends AbstractSingleton {
         throw new exceptions\DbcFailedExecuteException($e);
       }
 
-      return $success;
     }
+    file_put_contents(TEMP_PATH.DS.'log.sql', "==============================================\n\n$query\n\n" .
+        print_r($this->stmt_values[$index], true), FILE_APPEND);
+    return $success;
   }
 
   /**

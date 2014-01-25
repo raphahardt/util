@@ -39,7 +39,7 @@ Core::registerPackage('Djck\mvc:model\exceptions');
  * @since 0.1 (24/09/2013)
  * @version 0.2 (11/12/2013)
  */
-class Model extends AbstractObject implements \ArrayAccess, \Countable, \Iterator {
+class Model2 extends AbstractObject implements \ArrayAccess, \Countable, \Iterator {
   
   /**
    * Instancias únicas dos Behaviors usados no momento. Models compartilham Behaviors

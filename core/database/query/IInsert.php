@@ -35,9 +35,13 @@ extends base\InstructionBase {
     }
     
     parent::__toString();
+
+    // tira temporariamente o alias da tabela, pois INSERT não suporta alias
+    $alias = $this->entity->getAlias();
+    $this->entity->setAlias(null);
     
     $s = 'INSERT INTO ';
-    $s .= $this->entity . ' '. $this->entity->getAlias();
+    $s .= $this->entity;// . ' '. $this->entity->getAlias();
     $s .= ' (';
     //$s .= implode(', ', $this->fields);
     $sSel = '';
@@ -67,6 +71,9 @@ extends base\InstructionBase {
     if ($this->defs) {
       $s .= ' '.$this->defs;
     }
+
+    // devolve o alias da tabela
+    $this->entity->setAlias($alias);
     
     return $s;
   }

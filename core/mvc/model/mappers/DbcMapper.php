@@ -8,6 +8,7 @@ use Djck\database\Dbc;
 use Djck\database\query;
 
 use Djck\mvc\Mapper;
+use Djck\mvc\exceptions;
 use Djck\mvc\interfaces;
 
 use Djck\types;
@@ -29,7 +30,7 @@ class DbcMapper extends Mapper implements interfaces\DatabaseMapper {
   
   /**
    *
-   * @var Djck\database\Dbc 
+   * @var \Djck\database\Dbc
    * @access protected
    */
   protected $dbc;
@@ -51,10 +52,10 @@ class DbcMapper extends Mapper implements interfaces\DatabaseMapper {
     }
     
     if (!isset($this->entity)) {
-      throw new \Djck\CoreException('Obrigatorio definir uma tabela');
+      throw new exceptions\MapperException('Obrigatorio definir uma tabela');
     }
     
-    if (!isset($this->fields)) {
+    if (empty($this->fields)) {
       $this->setFields($this->entity->getFields());
     }
     
@@ -96,6 +97,18 @@ class DbcMapper extends Mapper implements interfaces\DatabaseMapper {
   // retornará todos os registros, independente de limit
   public function total() {
     return $this->count_geral;
+  }
+
+  public function find($pointer) {
+    $offset = parent::find($pointer);
+    if ($offset === false) {
+      $id_field = $this->getPointer();
+      $this->setFilter(array(new query\Criteria($this->{$id_field}, '=', $pointer)));
+      if ($this->select() > 0) {
+        return $this->internal_pointer;
+      }
+    }
+    return $offset;
   }
   
   public function select($fields=array(), $distinct=false) {

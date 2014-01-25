@@ -577,8 +577,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
     }
     if (($offset = $this->find($pointer)) !== false) {
       //array_splice($this->result, $offset, 1);
-      $this->result->splice($offset, 1);
-      --$this->count;
+      $this->splice($offset, 1);
       $this->nullset();
       return true;
     }
@@ -851,7 +850,7 @@ abstract class Mapper extends base\MapperBase implements \ArrayAccess {
    * @param mixed $initval Se definido, o id (pointer) do registro atual sera iniciado já com este valor
    */
   public function setPointer($pointer, $initval = null) {
-    if ($pointer instanceof query\base\HasAlias) {
+    if ($pointer instanceof query\interfaces\HasAlias) {
       $pointer = $pointer->getAlias();
     }
     $this->pointer = $pointer;

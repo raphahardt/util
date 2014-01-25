@@ -6,6 +6,7 @@ use Djck\CoreException;
 
 use Djck\mvc\Mapper;
 use Djck\mvc\interfaces;
+use Djck\mvc\exceptions;
 
 /**
  * Description of FileMapper
@@ -25,13 +26,10 @@ class FileMapper extends Mapper implements interfaces\FileSystemMapper {
   protected $closure = '"';
   protected $escape = '\\';
   protected $newline = PHP_EOL;
-  
-  protected $fields;
-  
+
   protected $permanent_delete = true;
-  
-  // serve como base para dados que vierem para serem alterados ou inseridos
-  private $_fields_array = array();
+
+  protected $_deleted_regs = array();
   
   /**
    * File pointer, para operações de abrir arquivo
@@ -52,21 +50,17 @@ class FileMapper extends Mapper implements interfaces\FileSystemMapper {
   public function init() {
     
     if (!isset($this->entity))
-      throw new CoreException('Obrigatorio definir um arquivo');
+      throw new exceptions\MapperException('Obrigatorio definir um arquivo');
     
     if (!isset($this->fields))
-      throw new CoreException('Obrigatorio definir os campos');
-    
-    $this->_fields_array = array();
-    foreach ($this->fields as $f) {
-      $this->_fields_array[$f] = null;
-    }
+      throw new exceptions\MapperException('Obrigatorio definir os campos');
+
     // inicia os dados já com os campos definidos
     $this->nullset();
     
     // select registros logo de inicio
     if (!is_file($this->entity)) {
-      throw new CoreException('Arquivo '.basename($this->entity).' não existe');
+      throw new exceptions\MapperException('Arquivo '.basename($this->entity).' não existe');
     }
     
     // OLD
@@ -81,7 +75,7 @@ class FileMapper extends Mapper implements interfaces\FileSystemMapper {
       $this->read();
       $this->endLock();
     } else {
-      throw new CoreException('Houve um problema ao ler o arquivo '.basename($this->entity));
+      throw new exceptions\MapperException('Houve um problema ao ler o arquivo '.basename($this->entity));
     }
     
     // seta o autoincremente para o ultimo encontrado no arquivo
@@ -110,31 +104,7 @@ class FileMapper extends Mapper implements interfaces\FileSystemMapper {
     fclose($this->fp);
     unset($this->fp);
   }
-  
-  public function nullset() {
-    parent::nullset();
-    $this->data = $this->_fields_array; // limpa com os campos da tabela
-  }
-  
-  public function set($data) {
-    parent::set($data);
-    $this->data = $this->_diff($this->_fields_array, $this->data); // preenche os campos que faltaram
-  }
-  
-  public function push($data = null, $flag = self::FRESH) {
-    if (is_array($data) && !empty($data)) {
-      $data = $this->_diff($this->_fields_array, $data); // preenche os campos que faltaram
-    }
-    return parent::push($data, $flag);
-  }
-  
-  public function unshift($data = null, $flag = self::FRESH) {
-    if (is_array($data) && !empty($data)) {
-      $data = $this->_diff($this->_fields_array, $data); // preenche os campos que faltaram
-    }
-    return parent::unshift($data, $flag);
-  }
-  
+
   /**
    * Processa os dados do objeto para o arquivo.
    * Cada tipo de mapper deve alterar essa função para fazer a conversão correta dos
@@ -179,7 +149,8 @@ class FileMapper extends Mapper implements interfaces\FileSystemMapper {
     
     // vai com ponteiro pro inicio do arquivo
     fseek($this->fp, 0, SEEK_SET); 
-    
+
+    $final = '';
     $header = null;
     while (($buffer = fgets($this->fp, 4096)) !== false) {
       $final .= $buffer;
@@ -201,17 +172,22 @@ class FileMapper extends Mapper implements interfaces\FileSystemMapper {
 
       // ve se o item ja tem
       if (($offset = $this->find($data[ $this->getPointer() ])) !== false) {
-        // update, se encontrar
-        $this->set($data);
-        $this->refresh();
+        // update, se encontrar, mas somente se o dado ja nao estiver persistido
+        if (!$this->_isFlag($offset, self::PERSISTED)) {
+          $this->set($data);
+          $this->refresh();
+        }
       } else {
         // insert, se não encontrar
-        $this->push($data);
+        // só dá insert se o registro não foi ja deletado
+        if (!$this->_deleted_regs[$data[ $this->getPointer() ]]) {
+          $this->push($data, self::PERSISTED);
+        }
       }
 
     }
     if (!feof($this->fp)) {
-      throw new CoreException('O arquivo '.basename($this->entity).' não pode ser lido completamente');
+      throw new exceptions\MapperException('O arquivo '.basename($this->entity).' não pode ser lido completamente');
     }
 
     return true;
@@ -224,12 +200,12 @@ class FileMapper extends Mapper implements interfaces\FileSystemMapper {
   public function commit() {
     
     if (!is_file($this->entity))
-      return false;
+      return parent::commit();
     
     $success = true;
     
     if (!$this->startLock(LOCK_EX)) {
-      return false;
+      return parent::commit();
     }
     
     // dá um "refresh" no result interno, antes de salvar
@@ -262,13 +238,20 @@ class FileMapper extends Mapper implements interfaces\FileSystemMapper {
     fflush($this->fp); // flush output before releasing the lock
 
     $this->endLock();
-    
-    return $success && parent::commit();
+
+    // desmarca deletados
+    $this->_deleted_regs = array();
+
+    if ($this->autoCommit()) {
+      $this->beginTransaction(); // simula um inicio de transaction para o commit() fechar
+    }
+
+    return parent::commit() && $success;
   }
   
   /**
    * Deleta o arquivo (entidade)
-   * @return boolen
+   * @return boolean
    */
   public function destroy() {
     $success = is_file($this->entity) ? unlink($this->entity) : false;
@@ -277,54 +260,33 @@ class FileMapper extends Mapper implements interfaces\FileSystemMapper {
     
     return $success;
   }
-  
-  /**
-   * Define os campos dos registros. Nos arquivos servirão de cabeçalho. Nos outros formatos
-   * como json ou xml, serão propriedades
-   * (É protected pois não é possivel alterar os campos em tempo de execução, só ao criar a
-   * instancia __construct)
-   * @param mixed $entity
-   * @access protected
-   */
-  public function setFields($fields) {
-    $this->fields = $fields;
-  }
-  
-  /**
-   * Retorna os campos definidos
-   * @return mixed
-   */
-  public function getFields() {
-    return $this->fields;
-  }
-  
-  /**
-   * Função para retorno dos campos do Model como propriedades do objeto.
-   * Exemplo:
-   * $model->nome;  // retorna o campo 'nome' da tabela do model
-   * $model->nome->getValue(); // retorna o valor do campo 'nome'; ou
-   * $model['nome'];
-   * 
-   * Também é possível retornar outras propriedades do Model
-   * $model->Table // retorna a primeira tabela do model
-   * $model->Tables // retorna as tabelas definidas do model
-   * $model->Fields // retorna os campos definidos do model
-   * 
-   * Uso:
-   * $model->Table->Fields['nome'] // retorna o campo 'nome' da primeira tabela do model
-   * 
-   * @param type $name
-   * @return type
-   * @throws ModelException
-   */
-  function __get($name) {
-    
-    // sanitize
-    $field = strtolower($name);
-    
-    if (in_array($field, $this->fields)) {
-      return $field;
+
+  public function shift() {
+    if ($this->_isFlag(0, self::PERSISTED)) {
+      $id = $this->result[0]['data'][$this->getPointer()];
+      $this->_deleted_regs[$id] = true;
     }
+    return parent::shift();
   }
-  
+
+  public function pop() {
+    $offset = $this->count-1;
+    if ($this->_isFlag($offset, self::PERSISTED)) {
+      $id = $this->result[$offset]['data'][$this->getPointer()];
+      $this->_deleted_regs[$id] = true;
+    }
+    return parent::pop();
+  }
+
+  public function splice($offset, $len=1) {
+    $pointer = $this->getPointer();
+    for ($i=$offset;$i<$offset+$len;$i++) {
+      if ($this->_isFlag($i, self::PERSISTED)) {
+        $id = $this->result[$i]['data'][$pointer];
+        $this->_deleted_regs[$id] = true;
+      }
+    }
+    return parent::splice($offset, $len);
+  }
+
 }

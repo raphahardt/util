@@ -2,8 +2,14 @@
 
 namespace Djck\model;
 
+use Djck\Core;
+use Djck\database\query;
 use Djck\system\AbstractSingleton;
-use Djck\system\AbstractObject;
+use Djck\model\exceptions;
+
+Core::uses('ModelRegister', 'Djck\model');
+Core::uses('ModelCollection', 'Djck\model');
+Core::registerPackage('Djck\model\exceptions');
 
 class Model extends AbstractSingleton implements \Countable {
   
@@ -25,7 +31,12 @@ class Model extends AbstractSingleton implements \Countable {
    * @var ModelRegister[]
    */
   protected $Registers = array();
-  
+
+  /**
+   * Define o Mapper para o Model
+   *
+   * @param \Djck\mvc\Mapper $Mapper
+   */
   public function setMapper(\Djck\mvc\Mapper $Mapper) {
     //$this->columns = $Mapper->getFields();
     //$this->entity = $Mapper->getEntity();
@@ -33,7 +44,6 @@ class Model extends AbstractSingleton implements \Countable {
     $this->Mapper = $Mapper;
     $this->Mapper->init();
   }
-
 
   public function destroy() {
     $this->Mapper = null;
@@ -43,7 +53,11 @@ class Model extends AbstractSingleton implements \Countable {
   public function reinit() {
     $this->reset();
   }
-  
+
+  /**
+   * Reinicia a instancia do model ao seu estado original
+   *
+   */
   public function reset() {
     $this->columns = array();
     $this->from = 0;
@@ -51,8 +65,12 @@ class Model extends AbstractSingleton implements \Countable {
     $this->limit = 0;
     $this->orders = array();
   }
-  
-  // retorna uma nova instancia de registro
+
+  /**
+   * Retorna um novo registro para o Model.
+   *
+   * @return ModelRegister
+   */
   public function create() {
     
     $register = new ModelRegister($this);
@@ -61,14 +79,20 @@ class Model extends AbstractSingleton implements \Countable {
     $this->reset();
     return $register;
   }
-  
-  // retorna um registro especifico de registro
+
+  /**
+   * Retorna um registro existente no Model por seu "pointer" (id).
+   *
+   * @param int $id Valor do pointer do registro a ser procurado
+   * @return ModelRegister
+   * @throws exceptions\ModelException
+   */
   function get($id) {
     
     // pega registro na persistencia
     $result = $this->Mapper->find($id);
     if ($result === false) {
-      throw new \Exception('Registro não existe');
+      throw new exceptions\ModelException('Registro não existe');
     }
     
     if (!isset($this->Registers[ "i$id" ])) {
@@ -86,8 +110,14 @@ class Model extends AbstractSingleton implements \Countable {
     $this->reset();
     return $register;
   }
-  
-  // retorna uma colecão
+
+  /**
+   * Retorna uma coleção com registros existentes no Model, selecionados pelo filtro.
+   *
+   * @param query\base\ExpressionBase[] $filter Array de expressões
+   * @param bool $distinct
+   * @return ModelCollection
+   */
   function getAll($filter = array(), $distinct = false) {
     
     // pega registro na persistencia
@@ -111,10 +141,18 @@ class Model extends AbstractSingleton implements \Countable {
     $this->reset();
     return $register;
   }
-  
-  // abre um registro persistido para alteração, independente dele existir ou nao
-  // a verificação se ele existe só acontece no digest()
-  // é como se fosse o get(), porem não faz select no banco (-1 request pro banco)
+
+  /**
+   * Retorna o mesmo que get(), porém não faz busca na persistência para verificar
+   * se o registro realmente existe. Essa verificação só acontece no próximo digest().
+   *
+   * Utilize esse método se você precisa editar um registro e não precisa de seus
+   * dados no momento. A vantagem de usar edit() é que economiza um request no banco
+   *
+   * @see Model::get()
+   * @param int $id
+   * @return ModelRegister
+   */
   function edit($id) {
     
     if (!isset($this->Registers[ "i$id" ])) {
@@ -134,8 +172,18 @@ class Model extends AbstractSingleton implements \Countable {
     $this->reset();
     return $register;
   }
-  
-  // retorna uma colecão
+
+  /**
+   * Retorna o mesmo que getAll(), porém não faz busca na persistência para verificar
+   * se os registros existem.
+   *
+   * Utilize esse método se você precisar editar vários registros e não precisa de seus
+   * valores no momento. A vantagem de usar edit() é que economiza um request no banco
+   *
+   * @see Model::getAll()
+   * @param query\base\ExpressionBase[] $filter
+   * @return ModelCollection
+   */
   function editAll($filter = array()) {
     
     // pega registro na persistencia
@@ -151,8 +199,12 @@ class Model extends AbstractSingleton implements \Countable {
     $this->reset();
     return $register;
   }
-  
-  // persiste as alterações feitas nos registros ou nas coleções
+
+  /**
+   * Faz a persistência de todas as alterações do model.
+   *
+   * @throws \Exception
+   */
   public function digest() {
     
     $Mapper =& $this->Mapper;
@@ -284,208 +336,6 @@ class Model extends AbstractSingleton implements \Countable {
   
   public function count() {
     return $this->Mapper->count();
-  }
-
-}
-
-class ModelRegister extends AbstractObject implements \ArrayAccess {
-  
-  public $columns = array();
-  public $from = 0;
-  public $to = 0;
-  public $limit = 0;
-  public $orders = array();
-  
-  protected $data = array();
-  
-  public $dirty = false;
-  public $dirty_columns = array();
-  public $persisted = false;
-  public $deleted = false;
-  
-  public function __construct(Model $Model) {
-    
-    $this->columns = $Model->columns;
-    $this->from = $Model->from;
-    $this->to = $Model->to;
-    $this->limit = $Model->limit;
-    
-    parent::__construct();
-  }
-  
-  public function offsetExists($offset) {
-    return isset($this->data[$offset]);
-  }
-
-  public function offsetGet($offset) {
-    return $this->data[$offset];
-  }
-
-  public function offsetSet($offset, $value) {
-    $this->dirty = true;
-    $this->dirty_columns[ $offset ] = $offset;
-    $this->data[$offset] = $value;
-  }
-
-  public function offsetUnset($offset) {
-    unset($this->data[$offset]);
-  }
-  
-  // deprecated: usar model->delete(reg) em vez de reg->delete()
-  /*public function delete() {
-    $this->dirty = true;
-    $this->deleted = true;
-  }*/
-  
-  public function setData($data) {
-    $this->data = $data;
-  }
-  
-  public function getData() {
-    return $this->data;
-  }
-  
-  public function getUpdatedColumns() {
-    return array_values($this->dirty_columns);
-  }
-  
-  public function isDirty() {
-    return (bool)$this->dirty;
-  }
-  
-  public function isPersisted() {
-    return (bool)$this->persisted;
-  }
-  
-  public function isDeleted() {
-    return (bool)$this->deleted;
-  }
-  
-  public function setPersisted() {
-    $this->persisted = true;
-  }
-  
-  public function setDirty($dirty_columns = array()) {
-    $this->dirty = true;
-    if (!empty($dirty_columns)) {
-      foreach ($dirty_columns as $col) {
-        $this->dirty_columns[$col] = $col;
-      }
-    }
-  }
-  
-  public function setPristine() {
-    $this->dirty = false;
-    $this->dirty_columns = array();
-  }
-  
-  public function setDeleted() {
-    $this->deleted = true;
-  }
-  
-}
-
-/////////////
-
-class ModelCollection extends ModelRegister implements \ArrayAccess, \Countable, \SeekableIterator {
-  
-  public $filters = array();
-  public $orders = array();
-  
-  protected $data_collection;
-  
-  public function __construct(Model $Model, $filters) {
-    
-    $this->filters = $filters;
-    $this->orders = $Model->orders;
-    
-    $this->data_collection = new \Djck\types\StorageArray();
-    
-    parent::__construct($Model);
-  }
-  
-  public function setCollection($data) {
-    if (!is_array($data) && !($data instanceof \Iterator)) {
-      throw new \Exception('Os dados do collection precisam ser um array/iterator');
-    }
-    if ($data instanceof \Djck\types\StorageArray) {
-      $this->data_collection = $data;
-    } else {
-      $this->data_collection->clean();
-      if (count($data) > 0) {
-        foreach ($data as $row) {
-          $this->data_collection->push($row);
-        }
-      }
-    }
-  }
-  
-  public function count() {
-    return $this->data_collection->count();
-  }
-
-  public function current() {
-    $data = $this->data_collection->current();
-    if (isset($data['data'])) {
-      $data = $data['data'];
-    }
-    return $data;
-  }
-
-  public function key() {
-    return $this->data_collection->key();
-  }
-
-  public function next() {
-    return $this->data_collection->next();
-  }
-
-  public function offsetExists($offset) {
-    if (!is_numeric($offset)) {
-      return parent::offsetExists($offset);
-    }
-    if (isset($this->data_collection[$offset]['data'])) {
-      return isset($this->data_collection[$offset]['data']);
-    }
-    return isset($this->data_collection[$offset]);
-  }
-
-  public function offsetGet($offset) {
-    if (!is_numeric($offset)) {
-      return parent::offsetGet($offset);
-    }
-    if (isset($this->data_collection[$offset]['data'])) {
-      return $this->data_collection[$offset]['data'];
-    }
-    return $this->data_collection[$offset];
-  }
-
-  public function offsetSet($offset, $value) {
-    if (!is_numeric($offset)) {
-      parent::offsetSet($offset, $value);
-      return;
-    }
-    throw new \Exception('$collection[] = val não suportado');
-  }
-
-  public function offsetUnset($offset) {
-    if (!is_numeric($offset)) {
-      parent::offsetUnset($offset);
-      return;
-    }
-    throw new \Exception('unset($collection[key]) não suportado');
-  }
-
-  public function rewind() {
-    $this->data_collection->rewind();
-  }
-
-  public function seek($position) {
-    $this->data_collection->seek($position);
-  }
-
-  public function valid() {
-    return $this->data_collection->valid();
   }
 
 }

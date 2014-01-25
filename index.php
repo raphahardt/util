@@ -4,30 +4,56 @@ namespace Djck;
 
 require 'core/bootstrap.php';
 
+use Djck\database\Dbc;
+use Djck\database\query\Table;
 use Djck\model\Model as NewModel;
 Core::import('Model', 'Djck\model');
 
 class AModel extends NewModel {
   
   public function __construct() {
-    
+    $table = new Table('teste', 't');
+    $table->addField('id');
+    $table->addField('coluna1');
+    $table->addField('col2');
+    $table->addField('col3');
+
     // cria o mapper que é como o model vai manipular os dados e que tipo de persistencia será usada
-    $mapper = new mvc\mappers\DbcMapper();
+    /*$mapper = new mvc\mappers\DbcMapper();
+    $mapper->setEntity($table);/**/
+
+    /*$mapper = new mvc\mappers\TempMapper();
     $mapper->setFields(array(
         new database\query\Field('id'),
         new database\query\Field('coluna1'),
         new database\query\Field('col2'),
         new database\query\Field('col3'),
     ));
-    $mapper->setEntity('');
+    $mapper->setEntity('');/**/
+
+    $mapper = new mvc\mappers\FileMapper();
+    $mapper->setFields(array(
+        new database\query\Field('id'),
+        new database\query\Field('coluna1'),
+        new database\query\Field('col2'),
+        new database\query\Field('col3'),
+    ));
+    $mapper->setEntity(TEMP_PATH . DS. 'file.txt');/**/
     
     // faz as definições para o model
     $this->setMapper($mapper);
     
     parent::__construct();
   }
-  
 }
+
+$bd = Dbc::getInstance('default');
+$bd->prepare('TRUNCATE teste');
+$bd->execute();
+$bd->free();
+$bd = null;
+$f = fopen(TEMP_PATH.DS.'file.txt', 'w');
+fclose($f);
 
 $model = AModel::getInstance();
 $reg = $model->create();
@@ -45,7 +71,7 @@ $model->digest();
 $reg['col2'] = 'AAAA';
 $reg2['coluna1'] = 'joao';
 //$reg2->delete();
-//$model->delete($reg2);
+$model->delete($reg2);
 
 $reg3 = $model->create();
 $reg3['coluna1'] = 'ookokokoko';
@@ -54,13 +80,13 @@ $reg3['col3'] = 'SSSSookokokoko';
 //dump($model);
 $model->digest();
 
-$reg2b = $model->get(3);
+$reg2b = $model->get($reg3['id']);
 $reg2b['col2'] = 'CCC';
 $reg['col3'] = 'DDD';
 
 $model->digest();
 
-$allregs = $model->orderBy('id', true)->limit(2)->getAll();
+$allregs = $model->orderBy('coluna1', true)->limit(2)->columns(array('coluna1', 'id'))->getAll();
 foreach ($allregs as $r) {
   dump($r);
   dump($r['coluna1']);
